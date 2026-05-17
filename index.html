@@ -6,7 +6,10 @@
 
 <title>نظام التتبع العالمي الذكي</title>
 
+<!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<!-- Routing Machine -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
 
 <style>
@@ -184,7 +187,7 @@ button:hover{
 
 <div class="status">
     <div class="dot" id="statusDot"></div>
-    <span id="gpsStatus">في انتظار تشغيل GPS...</span>
+    <span id="gpsStatus">في انتظار تشغيل GPS أو بدء الملاحة...</span>
 </div>
 
 <button class="gps-btn" onclick="startLiveTracking()">
@@ -236,7 +239,10 @@ button:hover{
 
 </div>
 
+<!-- Leaflet -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Routing -->
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
 <script>
@@ -276,13 +282,15 @@ function initMap(){
 
 function startLiveTracking(){
 
+    // إذا كان التتبع يعمل بالفعل، لا داعي لإعادة تشغيله
+    if(watchId !== null) return;
+
     if(!navigator.geolocation){
         alert("المتصفح لا يدعم GPS");
         return;
     }
 
     document.getElementById("statusDot").classList.add("blink");
-
     document.getElementById("gpsStatus").innerText =
         "جاري الاتصال بالأقمار الصناعية...";
 
@@ -294,7 +302,6 @@ function startLiveTracking(){
             currentLng = position.coords.longitude;
 
             document.getElementById("statusDot").classList.remove("blink");
-
             document.getElementById("statusDot").style.background =
                 "#10b981";
 
@@ -382,40 +389,21 @@ function updateUserMarker(){
 
     }
 
-    // تتبع حي للخريطة
-
-    map.flyTo(
-        [currentLat,currentLng],
-        16,
-        {
-            animate:true,
-            duration:2
-        }
-    );
-
-    // إبقاء الطريق كامل ظاهر بالشاشة
-
-    if(
-        routeControl &&
-        targetLat !== null &&
-        targetLng !== null
-    ){
-
+    // جعل الخريطة تتحرك وتعمل زووم على موقع المستخدم والوجهة معاً إذا توافرا
+    if(targetLat !== null && targetLng !== null){
         let bounds = L.latLngBounds([
-            [currentLat,currentLng],
-            [targetLat,targetLng]
+            [currentLat, currentLng],
+            [targetLat, targetLng]
         ]);
-
-        map.fitBounds(bounds,{
-            padding:[50,50]
-        });
-
+        map.fitBounds(bounds, {padding: [50, 50]});
+    } else {
+        map.setView([currentLat,currentLng], 16);
     }
 
 }
 
 //////////////////////////////////////
-// البحث عن الوجهة
+// البحث عن الوجهة وتفعيل الـ GPS تلقائياً
 //////////////////////////////////////
 
 async function searchDestination(){
@@ -424,10 +412,13 @@ async function searchDestination(){
         document.getElementById("targetInput").value.trim();
 
     if(!query){
-
-        alert("اكتب اسم الوجهة");
-
+        alert("اكتب اسم الوجهة أولاً");
         return;
+    }
+
+    // تفعيل الـ GPS تلقائياً إذا لم يكن مفعلاً
+    if(watchId === null){
+        startLiveTracking();
     }
 
     try{
@@ -439,9 +430,7 @@ async function searchDestination(){
         let data = await response.json();
 
         if(data.length === 0){
-
-            alert("لم يتم العثور على المكان");
-
+            alert("لم يتم العثور على المكان المكتوب");
             return;
         }
 
@@ -455,20 +444,22 @@ async function searchDestination(){
 
         updateTargetMarker();
 
+        // إذا نجح الـ GPS في جلب الموقع الحالي، ارسم الطريق مباشرة
         if(currentLat !== null && currentLng !== null){
-
             drawRoute();
-
             updateDistance();
-
+            
+            // احتواء الخريطة للموقعين معاً
+            let bounds = L.latLngBounds([
+                [currentLat, currentLng],
+                [targetLat, targetLng]
+            ]);
+            map.fitBounds(bounds, {padding: [50, 50]});
         }
 
     }catch(error){
-
         console.log(error);
-
-        alert("حدث خطأ أثناء البحث");
-
+        alert("حدث خطأ أثناء البحث عن الوجهة");
     }
 
 }
@@ -593,7 +584,7 @@ function openGoogleMaps(){
         targetLat === null
     ){
 
-        alert("حدد الوجهة أولاً");
+        alert("حدد الوجهة وانتظر اتصال الـ GPS أولاً");
 
         return;
     }
@@ -606,7 +597,7 @@ function openGoogleMaps(){
 }
 
 //////////////////////////////////////
-// تشغيل الخريطة
+// تشغيل الخريطة عند تحميل الصفحة
 //////////////////////////////////////
 
 window.onload = initMap;
