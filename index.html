@@ -4,16 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>نظام التتبع العالمي الذكي - التحديث المستقر</title>
+<title>نظام Traking العالمي المستقر</title>
 
-<!-- Leaflet -->
+<!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
-<!-- Routing Machine -->
+<!-- Routing Machine CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
 
 <style>
-
 :root{
     --bg:#0f172a;
     --card:rgba(30,41,59,.8);
@@ -176,7 +175,6 @@ button:hover{
     margin-top:5px;
 }
 
-/* ستايل مخصص لخيار تثبيت الشاشة المتطور */
 .toggle-container {
     display: flex;
     align-items: center;
@@ -186,7 +184,6 @@ button:hover{
     padding: 10px 15px;
     border-radius: 12px;
 }
-
 </style>
 </head>
 
@@ -216,7 +213,7 @@ button:hover{
 
 <div class="input-group">
     <label>الوجهة المطلوبة:</label>
-    <input type="text" id="targetInput" placeholder="اكتب المكان أو المدينة">
+    <input type="text" id="targetInput" placeholder="اكتب المكان أو المدينة واضغط بدء">
 </div>
 
 <button class="search-btn" onclick="searchDestination()">
@@ -226,7 +223,7 @@ button:hover{
 <div id="map"></div>
 
 <div class="card">
-    <h3>📌 نقطة الانطلاق (أدق قراءة نشطة)</h3>
+    <h3>📌 نقطة الانطلاق</h3>
     <div id="startText">لم يتم تحديد الموقع بعد</div>
 </div>
 
@@ -237,7 +234,7 @@ button:hover{
 
 <div class="card">
     <h3 style="text-align:center;color:#10b981">
-        📏 المسافة المتبقية (عبر الطرقات الفعليّة)
+        📏 المسافة المتبقية (عبر الطرقات)
     </h3>
 
     <div class="distance" id="distanceBox">
@@ -255,14 +252,13 @@ button:hover{
 
 </div>
 
-<!-- Leaflet -->
+<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Routing -->
+<!-- Routing Machine JS -->
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
 <script>
-
 let map;
 let userMarker;
 let targetMarker;
@@ -271,75 +267,47 @@ let watchId = null;
 
 let currentLat = null;
 let currentLng = null;
-
 let targetLat = null;
 let targetLng = null;
-
-// استخدام أيقونات مميزة واحترافية تسهل رؤية الحركة في الخريطة الداخلية
-const userIcon = L.icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', 
-    iconSize: [35, 35],
-    iconAnchor: [17, 35]
-});
-
-const targetIcon = L.icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/252/252025.png', 
-    iconSize: [35, 35],
-    iconAnchor: [17, 35]
-});
 
 //////////////////////////////////////
 // تشغيل الخريطة
 //////////////////////////////////////
-
 function initMap(){
+    map = L.map('map').setView([26.8206,30.8025], 6);
 
-    map = L.map('map').setView([26.8206,30.8025],6);
-
-    L.tileLayer(
-        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        {
-            attribution:'© OpenStreetMap contributors',
-            maxZoom: 19
-        }
-    ).addTo(map);
-
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
 }
 
 //////////////////////////////////////
-// تشغيل GPS المباشر عالي الدقة (مقتبس من التحديث الأخير)
+// تشغيل GPS المباشر عالي الدقة
 //////////////////////////////////////
-
 function startLiveTracking(){
-
     if(!navigator.geolocation){
-        alert("المتصفح أو الجهاز لا يدعم مستشعر GPS");
+        alert("المتصفح لا يدعم تحديد الموقع GPS");
         return;
     }
 
-    if(watchId !== null) {
-        return;
-    }
+    if(watchId !== null) return;
 
     document.getElementById("statusDot").className = "dot blink";
     document.getElementById("statusDot").style.background = "#f59e0b";
-    document.getElementById("gpsStatus").innerText =
-        "جاري الاتصال بالأقمار الصناعية وتحسين الدقة...";
+    document.getElementById("gpsStatus").innerText = "جاري الاتصال بالأقمار الصناعية...";
 
-    // إعدادات الملاحة فائقة الدقة والسرعة لمنع التقييد والبطء
     const gpsOptions = {
-        enableHighAccuracy: true, // تفعيل مستشعر الـ GPS الداخلي للهاتف بالكامل وليس شبكات التقريب
-        maximumAge: 0,            // مسح الكاش واستلام قراءات حية فريش
-        timeout: 4000             // تحديث سريع مستمر كل 4 ثوانٍ كحد أقصى
+        enableHighAccuracy: true, 
+        maximumAge: 0,            
+        timeout: 6000             
     };
 
     watchId = navigator.geolocation.watchPosition(
-
         function(position){
-
-            // فلترة وتصفية دقة الإشارة (تجاهل القفزات الوهمية إذا كان معدل الخطأ أكثر من 30 متراً)
-            if (position.coords.accuracy > 30 && currentLat !== null) {
-                document.getElementById("accuracyText").innerText = `إشارة الـ GPS ضعيفة (نسبة الخطأ ±${Math.round(position.coords.accuracy)} متر)، يتم تحسين القراءة...`;
+            // مصفاة لمنع قفزات الموقع الوهمية خارج الشارع
+            if (position.coords.accuracy > 40 && currentLat !== null) {
+                document.getElementById("accuracyText").innerText = `إشارة ضعيفة (نسبة الخطأ ±${Math.round(position.coords.accuracy)} متر)...`;
                 return; 
             }
 
@@ -347,259 +315,162 @@ function startLiveTracking(){
             currentLng = position.coords.longitude;
 
             document.getElementById("statusDot").classList.remove("blink");
-            document.getElementById("statusDot").style.background =
-                "#10b981";
-
-            document.getElementById("gpsStatus").innerText =
-                "نظام الملاحة نشط ومتصل بالقمر الصناعي 🛰️";
-
-            document.getElementById("accuracyText").innerText = 
-                `مستوى دقة الإشارة الحالي: ±${Math.round(position.coords.accuracy)} متر`;
+            document.getElementById("statusDot").style.background = "#10b981";
+            document.getElementById("gpsStatus").innerText = "GPS متصل والتتبع يعمل مباشرة 📡";
+            document.getElementById("accuracyText").innerText = `دقة الإشارة الحالية: ±${Math.round(position.coords.accuracy)} متر`;
 
             updateUserMarker();
 
             if(targetLat !== null && targetLng !== null){
                 drawRoute();
             }
-
         },
-
         function(error){
-
-            console.log(error);
-
-            document.getElementById("statusDot").style.background =
-                "#ef4444";
+            console.error(error);
+            document.getElementById("statusDot").style.background = "#ef4444";
             document.getElementById("statusDot").classList.remove("blink");
-
-            document.getElementById("gpsStatus").innerText =
-                "فشل الوصول للموقع";
-
-            alert(
-                "تأكد من:\n\n1- السماح للموقع من إعدادات الهاتف والمستعرض\n2- تفعيل الـ GPS الفعلي\n3- استخدام رابط آمن HTTPS"
-            );
-
+            document.getElementById("gpsStatus").innerText = "فشل الوصول للموقع";
+            alert("تأكد من تفعيل صلاحيات الموقع وتشغيل الـ GPS على جهازك.");
         },
         gpsOptions
     );
-
 }
 
-//////////////////////////////////////
-// إيقاف التتبع
-//////////////////////////////////////
-
 function stopTracking(){
-
     if(watchId !== null){
-
         navigator.geolocation.clearWatch(watchId);
-
         watchId = null;
-
-        document.getElementById("gpsStatus").innerText =
-            "تم إيقاف الملاحة النشطة";
-
-        document.getElementById("statusDot").style.background =
-            "#f59e0b";
+        document.getElementById("gpsStatus").innerText = "تم إيقاف التتبع";
+        document.getElementById("statusDot").style.background = "#f59e0b";
         document.getElementById("statusDot").classList.remove("blink");
-
     }
-
 }
 
 //////////////////////////////////////
 // تحديث ماركر المستخدم
 //////////////////////////////////////
-
 function updateUserMarker(){
-
-    document.getElementById("startText").innerText =
-        `خط العرض: ${currentLat.toFixed(6)}\nخط الطول: ${currentLng.toFixed(6)}`;
+    document.getElementById("startText").innerText = `الموقع الحالي:\n${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
 
     if(userMarker){
-        userMarker.setLatLng([currentLat,currentLng]);
+        userMarker.setLatLng([currentLat, currentLng]);
     }else{
-        userMarker = L.marker([currentLat,currentLng], {icon: userIcon})
+        userMarker = L.marker([currentLat, currentLng])
             .addTo(map)
             .bindPopup("📍 موقعك الحالي الفعلي").openPopup();
     }
 
-    // إدارة تثبيت الكاميرا والتحرك التلقائي مع السائق/المستخدم
     const isAutoCenter = document.getElementById("autoCenterCheck").checked;
     if(isAutoCenter && (targetLat === null || targetLng === null)) {
-        map.setView([currentLat,currentLng],17); // زووم تتبع ملاحي مريح وقريب
+        map.setView([currentLat, currentLng], 16);
     }
-
 }
 
 //////////////////////////////////////
-// البحث عن الوجهة وتفعيل الـ GPS تلقائياً
+// البحث عن الوجهة
 //////////////////////////////////////
-
 async function searchDestination(){
-
-    let query =
-        document.getElementById("targetInput").value.trim();
+    let query = document.getElementById("targetInput").value.trim();
 
     if(!query){
-        alert("اكتب اسم الوجهة");
+        alert("اكتب اسم الوجهة أولاً");
         return;
     }
 
     try{
-
-        let response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`
-        );
-
+        let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
         let data = await response.json();
 
         if(data.length === 0){
-            alert("لم يتم العثور على المكان، حاول صياغة الاسم بشكل أوضح");
+            alert("لم يتم العثور على المكان، اكتبه بشكل أوضح");
             return;
         }
 
         targetLat = parseFloat(data[0].lat);
         targetLng = parseFloat(data[0].lon);
-
-        let placeName = data[0].display_name;
-
-        document.getElementById("targetText").innerText =
-            placeName;
+        document.getElementById("targetText").innerText = data[0].display_name;
 
         updateTargetMarker();
-
-        // تفعيل الـ GPS تلقائياً فور العثور على الهدف للبدء بالملاحة المباشرة
-        startLiveTracking();
+        startLiveTracking(); 
 
         if(currentLat !== null && currentLng !== null){
             drawRoute();
         }
-
     }catch(error){
-        console.log(error);
-        alert("حدث خطأ أثناء البحث عن الوجهة");
+        console.error(error);
+        alert("حدث خطأ أثناء البحث");
     }
-
 }
-
-//////////////////////////////////////
-// تحديث ماركر الوجهة
-//////////////////////////////////////
 
 function updateTargetMarker(){
-
     if(targetMarker){
-        targetMarker.setLatLng([targetLat,targetLng]);
+        targetMarker.setLatLng([targetLat, targetLng]);
     }else{
-        targetMarker = L.marker([targetLat,targetLng], {icon: targetIcon})
+        targetMarker = L.marker([targetLat, targetLng])
             .addTo(map)
-            .bindPopup("🎯 الوجهة المستهدفة");
+            .bindPopup("🎯 الوجهة");
     }
-
 }
 
 //////////////////////////////////////
-// رسم ومتابعة الطريق الملاحي الحقيقي وحساب المسافة بدقة
+// حساب المسار والمسافة
 //////////////////////////////////////
-
 function drawRoute(){
-
-    // إذا كان خط السير موجوداً، نغير الإحداثيات مباشرة بدلاً من حذفه وإعادة إنشائه لمنع حدوث وميض (Flickering)
     if(routeControl){
         routeControl.setWaypoints([
-            L.latLng(currentLat,currentLng),
-            L.latLng(targetLat,targetLng)
+            L.latLng(currentLat, currentLng),
+            L.latLng(targetLat, targetLng)
         ]);
-    }else{
+    } else {
         routeControl = L.Routing.control({
             waypoints:[
-                L.latLng(currentLat,currentLng),
-                L.latLng(targetLat,targetLng)
+                L.latLng(currentLat, currentLng),
+                L.latLng(targetLat, targetLng)
             ],
-            routeWhileDragging:false,
-            draggableWaypoints:false,
-            addWaypoints:false,
-            show:false, // إخفاء لوحة التعليمات الجانبية للتركيز على الخريطة
-            createMarker:function(){
-                return null; // نعتمد على علاماتنا المخصصة الاحترافية المعرفة في الأعلى
-            },
+            routeWhileDragging: false,
+            draggableWaypoints: false,
+            addWaypoints: false,
+            show: false,
+            createMarker: function() { return null; },
             lineOptions: {
-                styles: [{ color: '#2563eb', opacity: 0.8, weight: 6 }] // خط مسار أزرق واضح يحاكي خرائط جوجل تماماً
+                styles: [{ color: '#2563eb', opacity: 0.8, weight: 6 }]
             }
         }).addTo(map);
 
-        // الاستماع لحدث العثور على المسار لاستخراج المسافة الحقيقية الدقيقة بالشوارع
         routeControl.on('routesfound', function(e) {
             let routes = e.routes;
             let summary = routes[0].summary;
-            
-            // المسافة المستلمة من الخادم تكون بالمتر الفعلي للطريق
-            let distanceInMeters = summary.totalDistance; 
-            updateDistanceDisplay(distanceInMeters);
+            updateDistanceDisplay(summary.totalDistance);
         });
     }
 
-    // إدارة حركة كاميرا الخريطة حسب رغبة المستخدم في التثبيت الصارم أو العرض الشامل للمسار
     const isAutoCenter = document.getElementById("autoCenterCheck").checked;
     if(!isAutoCenter) {
-        let bounds = L.latLngBounds([
-            [currentLat, currentLng],
-            [targetLat, targetLng]
-        ]);
+        let bounds = L.latLngBounds([[currentLat, currentLng], [targetLat, targetLng]]);
         map.fitBounds(bounds, { padding: [50, 50] });
     } else {
-        map.setView([currentLat, currentLng], 15); // ملاحقة دقيقة لموقعك الحالي مع إبقاء الزووم متزن ومناسب للطريق
+        map.setView([currentLat, currentLng], 15);
     }
-
 }
-
-//////////////////////////////////////
-// عرض المسافة المحدثة في واجهة المستخدم
-//////////////////////////////////////
 
 function updateDistanceDisplay(distance){
-
     if(distance >= 1000){
-        document.getElementById("distanceBox").innerText =
-            (distance/1000).toFixed(2) + " كم";
+        document.getElementById("distanceBox").innerText = (distance/1000).toFixed(2) + " كم";
     }else{
-        document.getElementById("distanceBox").innerText =
-            Math.round(distance) + " متر";
+        document.getElementById("distanceBox").innerText = Math.round(distance) + " متر";
     }
-
 }
-
-//////////////////////////////////////
-// فتح خرائط جوجل الخارجية للملاحة الحية الموجهة بالصوت 100%
-//////////////////////////////////////
 
 function openGoogleMaps(){
-
-    if(
-        currentLat === null ||
-        targetLat === null
-    ){
-        alert("حدد وجهتك وقم بتفعيل الـ GPS أولاً");
+    if(currentLat === null || targetLat === null){
+        alert("حدد الوجهة وشغّل الـ GPS أولاً");
         return;
     }
-
-    // رابط متطور يجبر الهواتف الذكية على فتح تطبيق خرائط جوجل الفعلي بوضع الملاحة الحية والقيادة مباشرة (Driving Mode)
-    let url =
-        `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${targetLat},${targetLng}&travelmode=driving`;
-
-    window.open(url,'_blank');
-
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${targetLat},${targetLng}&travelmode=driving`;
+    window.open(url, '_blank');
 }
 
-//////////////////////////////////////
-// تشغيل الخريطة الأساسية عند البدء
-//////////////////////////////////////
-
 window.onload = initMap;
-
 </script>
-
 </body>
 </html>
