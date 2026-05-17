@@ -4,9 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>نظام التتبع العالمي الذكي - المطور بمحرك جوجل</title>
+<title>نظام التتبع العالمي الذكي - التحديث المستقر</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<!-- Routing Machine -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
 
 <style>
+
 :root{
     --bg:#0f172a;
     --card:rgba(30,41,59,.8);
@@ -169,6 +176,7 @@ button:hover{
     margin-top:5px;
 }
 
+/* ستايل مخصص لخيار تثبيت الشاشة المتطور */
 .toggle-container {
     display: flex;
     align-items: center;
@@ -178,6 +186,7 @@ button:hover{
     padding: 10px 15px;
     border-radius: 12px;
 }
+
 </style>
 </head>
 
@@ -185,7 +194,7 @@ button:hover{
 
 <div class="container">
 
-<h1>🛰️ المستكشف بمحرك Google</h1>
+<h1>🛰️ المستكشف العالمي الذكي</h1>
 
 <div class="status">
     <div class="dot" id="statusDot"></div>
@@ -193,11 +202,11 @@ button:hover{
 </div>
 
 <button class="gps-btn" onclick="startLiveTracking()">
-📍 تشغيل تتبع Google Maps المباشر
+📍 تشغيل التتبع المباشر عالي الدقة GPS
 </button>
 
 <div class="toggle-container">
-    <span>🔒 تثبيت الشاشة والمتابعة التلقائية</span>
+    <span>🔒 تثبيت الشاشة وتتبع حركتي تلقائياً</span>
     <input type="checkbox" id="autoCenterCheck" checked style="width: auto; cursor: pointer;">
 </div>
 
@@ -206,26 +215,29 @@ button:hover{
 </button>
 
 <div class="input-group">
-    <label>الوجهة المطلوبة (بحث Google):</label>
-    <!-- تم ربط هذا الحقل بميزة الإكمال التلقائي من جوجل -->
-    <input type="text" id="targetInput" placeholder="اكتب المكان، الفندق أو المدينة">
+    <label>الوجهة المطلوبة:</label>
+    <input type="text" id="targetInput" placeholder="اكتب المكان أو المدينة">
 </div>
+
+<button class="search-btn" onclick="searchDestination()">
+🚀 بدء الملاحة الذكية
+</button>
 
 <div id="map"></div>
 
 <div class="card">
-    <h3>📌 الإحداثيات الحالية (من المستشعر)</h3>
+    <h3>📌 نقطة الانطلاق (أدق قراءة نشطة)</h3>
     <div id="startText">لم يتم تحديد الموقع بعد</div>
 </div>
 
 <div class="card">
-    <h3>🎯 الوجهة المستهدفة</h3>
+    <h3>🎯 الوجهة</h3>
     <div id="targetText">لا توجد وجهة حالياً</div>
 </div>
 
 <div class="card">
     <h3 style="text-align:center;color:#10b981">
-        📏 المسافة والوقت (حسب خوادم Google الحية)
+        📏 المسافة المتبقية (عبر الطرقات الفعليّة)
     </h3>
 
     <div class="distance" id="distanceBox">
@@ -233,119 +245,101 @@ button:hover{
     </div>
 
     <div class="small" style="text-align:center" id="accuracyText">
-        مطابق تماماً لبيانات Google Maps الملاحية.
+        يتم تحديثها لحظياً بدقة طبقاً لمسار الشوارع الفعلي
     </div>
 </div>
 
 <button class="maps-btn" onclick="openGoogleMaps()">
-🗺️ فتح الملاحة في تطبيق خرائط جوجل
+🗺️ فتح الملاحة في خرائط جوجل
 </button>
 
 </div>
 
-<!-- استدعاء مكتبة خرائط جوجل الرسمية مع تفعيل ميزة الأماكن والمسارات -->
-<!-- تنبيه: يجب وضع الـ API Key الخاص بك مكان YOUR_API_KEY لتفعيل الخريطة بشكل كامل للجمهور -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&language=ar&region=EG"></script>
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Routing -->
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
 <script>
+
 let map;
 let userMarker;
 let targetMarker;
-let directionsService;
-let directionsRenderer;
-let autocomplete;
+let routeControl;
 let watchId = null;
 
 let currentLat = null;
 let currentLng = null;
+
 let targetLat = null;
 let targetLng = null;
 
+// استخدام أيقونات مميزة واحترافية تسهل رؤية الحركة في الخريطة الداخلية
+const userIcon = L.icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', 
+    iconSize: [35, 35],
+    iconAnchor: [17, 35]
+});
+
+const targetIcon = L.icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/252/252025.png', 
+    iconSize: [35, 35],
+    iconAnchor: [17, 35]
+});
+
 //////////////////////////////////////
-// تهيئة خريطة جوجل الرسمية
+// تشغيل الخريطة
 //////////////////////////////////////
+
 function initMap(){
-    directionsService = new google.maps.DirectionsService();
-    
-    // إعداد واجهة رسم الطريق بشكل مخصص يشبه الملاحة الفلوية
-    directionsRenderer = new google.maps.DirectionsRenderer({
-        suppressMarkers: true, // إخفاء علامات جوجل الافتراضية للتحكم بالماركرز الخاصة بنا
-        polylineOptions: {
-            strokeColor: "#2563eb",
-            strokeOpacity: 0.8,
-            strokeWeight: 6
+
+    map = L.map('map').setView([26.8206,30.8025],6);
+
+    L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+            attribution:'© OpenStreetMap contributors',
+            maxZoom: 19
         }
-    });
+    ).addTo(map);
 
-    // إنشاء الخريطة
-    map = new google.maps.Map(document.getElementById('map'), {
-        center: { lat: 26.8206, lng: 30.8025 },
-        zoom: 6,
-        disableDefaultUI: false,
-        // ستايل ليلي عصري متناسق مع تصميمك
-        styles: [
-            { elementType: "geometry", stylers: [{ color: "#0f172a" }] },
-            { elementType: "labels.text.fill", stylers: [{ color: "#94a3b8" }] },
-            { featureType: "road", elementType: "geometry", stylers: [{ color: "#1e293b" }] },
-            { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#334155" }] },
-            { featureType: "water", elementType: "geometry", stylers: [{ color: "#1e1b4b" }] }
-        ]
-    });
-
-    directionsRenderer.setMap(map);
-
-    // تفعيل ميزة الإكمال التلقائي الذكية من جوجل بمجرد الكتابة في الحقل
-    const input = document.getElementById("targetInput");
-    autocomplete = new google.maps.places.Autocomplete(input);
-    autocomplete.bindTo("bounds", map);
-
-    // الاستماع لاختيار المستخدم للمكان من اقتراحات جوجل
-    autocomplete.addListener("place_changed", () => {
-        const place = autocomplete.getPlace();
-        if (!place.geometry || !place.geometry.location) {
-            alert("يرجى اختيار مكان من القائمة المنسدلة المتاحة");
-            return;
-        }
-
-        targetLat = place.geometry.location.lat();
-        targetLng = place.geometry.location.lng();
-        document.getElementById("targetText").innerText = place.formatted_address || place.name;
-
-        updateTargetMarker();
-        startLiveTracking(); // تفعيل الملاحة فوراً
-
-        if (currentLat !== null && currentLng !== null) {
-            drawRoute();
-        }
-    });
 }
 
 //////////////////////////////////////
-// تشغيل الـ GPS المباشر فائق الدقة
+// تشغيل GPS المباشر عالي الدقة (مقتبس من التحديث الأخير)
 //////////////////////////////////////
+
 function startLiveTracking(){
+
     if(!navigator.geolocation){
-        alert("الجهاز لا يدعم مستشعر تحديد المواقع");
+        alert("المتصفح أو الجهاز لا يدعم مستشعر GPS");
         return;
     }
 
-    if(watchId !== null) return;
+    if(watchId !== null) {
+        return;
+    }
 
     document.getElementById("statusDot").className = "dot blink";
     document.getElementById("statusDot").style.background = "#f59e0b";
-    document.getElementById("gpsStatus").innerText = "جاري الاتصال بالأقمار الصناعية وتحسين الدقة...";
+    document.getElementById("gpsStatus").innerText =
+        "جاري الاتصال بالأقمار الصناعية وتحسين الدقة...";
 
+    // إعدادات الملاحة فائقة الدقة والسرعة لمنع التقييد والبطء
     const gpsOptions = {
-        enableHighAccuracy: true, 
-        maximumAge: 0,            
-        timeout: 4000             
+        enableHighAccuracy: true, // تفعيل مستشعر الـ GPS الداخلي للهاتف بالكامل وليس شبكات التقريب
+        maximumAge: 0,            // مسح الكاش واستلام قراءات حية فريش
+        timeout: 4000             // تحديث سريع مستمر كل 4 ثوانٍ كحد أقصى
     };
 
     watchId = navigator.geolocation.watchPosition(
+
         function(position){
-            // تصفية الإشارات الضعيفة للحفاظ على اتزان الخريطة
+
+            // فلترة وتصفية دقة الإشارة (تجاهل القفزات الوهمية إذا كان معدل الخطأ أكثر من 30 متراً)
             if (position.coords.accuracy > 30 && currentLat !== null) {
-                document.getElementById("accuracyText").innerText = `إشارة الـ GPS غير مستقرة، يتم موازنتها...`;
+                document.getElementById("accuracyText").innerText = `إشارة الـ GPS ضعيفة (نسبة الخطأ ±${Math.round(position.coords.accuracy)} متر)، يتم تحسين القراءة...`;
                 return; 
             }
 
@@ -353,123 +347,258 @@ function startLiveTracking(){
             currentLng = position.coords.longitude;
 
             document.getElementById("statusDot").classList.remove("blink");
-            document.getElementById("statusDot").style.background = "#10b981";
-            document.getElementById("gpsStatus").innerText = "نظام ملاحة جوجل نشط ومتصل 🛰️";
-            document.getElementById("accuracyText").innerText = `مستوى دقة إشارة الهاتف: ±${Math.round(position.coords.accuracy)} متر`;
+            document.getElementById("statusDot").style.background =
+                "#10b981";
+
+            document.getElementById("gpsStatus").innerText =
+                "نظام الملاحة نشط ومتصل بالقمر الصناعي 🛰️";
+
+            document.getElementById("accuracyText").innerText = 
+                `مستوى دقة الإشارة الحالي: ±${Math.round(position.coords.accuracy)} متر`;
 
             updateUserMarker();
 
             if(targetLat !== null && targetLng !== null){
                 drawRoute();
             }
+
         },
+
         function(error){
-            console.error(error);
-            document.getElementById("statusDot").style.background = "#ef4444";
-            document.getElementById("gpsStatus").innerText = "فشل الوصول للـ GPS";
+
+            console.log(error);
+
+            document.getElementById("statusDot").style.background =
+                "#ef4444";
+            document.getElementById("statusDot").classList.remove("blink");
+
+            document.getElementById("gpsStatus").innerText =
+                "فشل الوصول للموقع";
+
+            alert(
+                "تأكد من:\n\n1- السماح للموقع من إعدادات الهاتف والمستعرض\n2- تفعيل الـ GPS الفعلي\n3- استخدام رابط آمن HTTPS"
+            );
+
         },
         gpsOptions
     );
+
 }
+
+//////////////////////////////////////
+// إيقاف التتبع
+//////////////////////////////////////
 
 function stopTracking(){
+
     if(watchId !== null){
+
         navigator.geolocation.clearWatch(watchId);
+
         watchId = null;
-        document.getElementById("gpsStatus").innerText = "تم إيقاف التتبع النشط";
-        document.getElementById("statusDot").style.background = "#f59e0b";
+
+        document.getElementById("gpsStatus").innerText =
+            "تم إيقاف الملاحة النشطة";
+
+        document.getElementById("statusDot").style.background =
+            "#f59e0b";
+        document.getElementById("statusDot").classList.remove("blink");
+
     }
+
 }
 
 //////////////////////////////////////
-// تحديث موقعك بعلامة مخصصة متحركة
+// تحديث ماركر المستخدم
 //////////////////////////////////////
+
 function updateUserMarker(){
-    const pos = { lat: currentLat, lng: currentLng };
-    document.getElementById("startText").innerText = `${currentLat.toFixed(6)}, ${currentLng.toFixed(6)}`;
+
+    document.getElementById("startText").innerText =
+        `خط العرض: ${currentLat.toFixed(6)}\nخط الطول: ${currentLng.toFixed(6)}`;
 
     if(userMarker){
-        userMarker.setPosition(pos);
-    } else {
-        userMarker = new google.maps.Marker({
-            position: pos,
-            map: map,
-            title: "موقعك الحالي",
-            icon: {
-                url: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-                scaledSize: new google.maps.Size(35, 35)
-            }
-        });
+        userMarker.setLatLng([currentLat,currentLng]);
+    }else{
+        userMarker = L.marker([currentLat,currentLng], {icon: userIcon})
+            .addTo(map)
+            .bindPopup("📍 موقعك الحالي الفعلي").openPopup();
     }
 
+    // إدارة تثبيت الكاميرا والتحرك التلقائي مع السائق/المستخدم
     const isAutoCenter = document.getElementById("autoCenterCheck").checked;
     if(isAutoCenter && (targetLat === null || targetLng === null)) {
-        map.setCenter(pos);
-        map.setZoom(17);
+        map.setView([currentLat,currentLng],17); // زووم تتبع ملاحي مريح وقريب
     }
-}
 
-function updateTargetMarker(){
-    const pos = { lat: targetLat, lng: targetLng };
-    if(targetMarker){
-        targetMarker.setPosition(pos);
-    } else {
-        targetMarker = new google.maps.Marker({
-            position: pos,
-            map: map,
-            title: "الوجهة",
-            icon: {
-                url: 'https://cdn-icons-png.flaticon.com/512/252/252025.png',
-                scaledSize: new google.maps.Size(35, 35)
-            }
-        });
-    }
 }
 
 //////////////////////////////////////
-// حساب المسار الفعلي بواسطة خوارزمية Google المباشرة
+// البحث عن الوجهة وتفعيل الـ GPS تلقائياً
 //////////////////////////////////////
-function drawRoute(){
-    const origin = { lat: currentLat, lng: currentLng };
-    const destination = { lat: targetLat, lng: targetLng };
 
-    directionsService.route({
-        origin: origin,
-        destination: destination,
-        travelMode: google.maps.TravelMode.DRIVING // حساب المسار بناءً على الشوارع المخصصة للسيارات
-    }, (response, status) => {
-        if (status === google.maps.DirectionsStatus.OK) {
-            directionsRenderer.setDirections(response);
-            
-            // استخراج المسافة والوقت الفعلي بدقة متناهية من خوادم جوجل
-            const route = response.routes[0].legs[0];
-            const distanceText = route.distance.text; // مثل: "15.3 كم"
-            const durationText = route.duration.text; // مثل: "22 دقيقة"
+async function searchDestination(){
 
-            document.getElementById("distanceBox").innerHTML = `${distanceText} <br><span style="font-size:1.2rem; color:#f59e0b;">⏳ الوقت المتوقع: ${durationText}</span>`;
-            
-            const isAutoCenter = document.getElementById("autoCenterCheck").checked;
-            if (isAutoCenter) {
-                map.setCenter(origin);
-                map.setZoom(15);
-            }
-        } else {
-            console.error("실패:" + status);
-        }
-    });
-}
+    let query =
+        document.getElementById("targetInput").value.trim();
 
-function openGoogleMaps(){
-    if(currentLat === null || targetLat === null){
-        alert("يرجى تحديد الموقع والوجهة أولاً");
+    if(!query){
+        alert("اكتب اسم الوجهة");
         return;
     }
-    let url = `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${targetLat},${targetLng}&travelmode=driving`;
-    window.open(url, '_blank');
+
+    try{
+
+        let response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`
+        );
+
+        let data = await response.json();
+
+        if(data.length === 0){
+            alert("لم يتم العثور على المكان، حاول صياغة الاسم بشكل أوضح");
+            return;
+        }
+
+        targetLat = parseFloat(data[0].lat);
+        targetLng = parseFloat(data[0].lon);
+
+        let placeName = data[0].display_name;
+
+        document.getElementById("targetText").innerText =
+            placeName;
+
+        updateTargetMarker();
+
+        // تفعيل الـ GPS تلقائياً فور العثور على الهدف للبدء بالملاحة المباشرة
+        startLiveTracking();
+
+        if(currentLat !== null && currentLng !== null){
+            drawRoute();
+        }
+
+    }catch(error){
+        console.log(error);
+        alert("حدث خطأ أثناء البحث عن الوجهة");
+    }
+
 }
 
-// تشغيل الخريطة عند تحميل الصفحة
+//////////////////////////////////////
+// تحديث ماركر الوجهة
+//////////////////////////////////////
+
+function updateTargetMarker(){
+
+    if(targetMarker){
+        targetMarker.setLatLng([targetLat,targetLng]);
+    }else{
+        targetMarker = L.marker([targetLat,targetLng], {icon: targetIcon})
+            .addTo(map)
+            .bindPopup("🎯 الوجهة المستهدفة");
+    }
+
+}
+
+//////////////////////////////////////
+// رسم ومتابعة الطريق الملاحي الحقيقي وحساب المسافة بدقة
+//////////////////////////////////////
+
+function drawRoute(){
+
+    // إذا كان خط السير موجوداً، نغير الإحداثيات مباشرة بدلاً من حذفه وإعادة إنشائه لمنع حدوث وميض (Flickering)
+    if(routeControl){
+        routeControl.setWaypoints([
+            L.latLng(currentLat,currentLng),
+            L.latLng(targetLat,targetLng)
+        ]);
+    }else{
+        routeControl = L.Routing.control({
+            waypoints:[
+                L.latLng(currentLat,currentLng),
+                L.latLng(targetLat,targetLng)
+            ],
+            routeWhileDragging:false,
+            draggableWaypoints:false,
+            addWaypoints:false,
+            show:false, // إخفاء لوحة التعليمات الجانبية للتركيز على الخريطة
+            createMarker:function(){
+                return null; // نعتمد على علاماتنا المخصصة الاحترافية المعرفة في الأعلى
+            },
+            lineOptions: {
+                styles: [{ color: '#2563eb', opacity: 0.8, weight: 6 }] // خط مسار أزرق واضح يحاكي خرائط جوجل تماماً
+            }
+        }).addTo(map);
+
+        // الاستماع لحدث العثور على المسار لاستخراج المسافة الحقيقية الدقيقة بالشوارع
+        routeControl.on('routesfound', function(e) {
+            let routes = e.routes;
+            let summary = routes[0].summary;
+            
+            // المسافة المستلمة من الخادم تكون بالمتر الفعلي للطريق
+            let distanceInMeters = summary.totalDistance; 
+            updateDistanceDisplay(distanceInMeters);
+        });
+    }
+
+    // إدارة حركة كاميرا الخريطة حسب رغبة المستخدم في التثبيت الصارم أو العرض الشامل للمسار
+    const isAutoCenter = document.getElementById("autoCenterCheck").checked;
+    if(!isAutoCenter) {
+        let bounds = L.latLngBounds([
+            [currentLat, currentLng],
+            [targetLat, targetLng]
+        ]);
+        map.fitBounds(bounds, { padding: [50, 50] });
+    } else {
+        map.setView([currentLat, currentLng], 15); // ملاحقة دقيقة لموقعك الحالي مع إبقاء الزووم متزن ومناسب للطريق
+    }
+
+}
+
+//////////////////////////////////////
+// عرض المسافة المحدثة في واجهة المستخدم
+//////////////////////////////////////
+
+function updateDistanceDisplay(distance){
+
+    if(distance >= 1000){
+        document.getElementById("distanceBox").innerText =
+            (distance/1000).toFixed(2) + " كم";
+    }else{
+        document.getElementById("distanceBox").innerText =
+            Math.round(distance) + " متر";
+    }
+
+}
+
+//////////////////////////////////////
+// فتح خرائط جوجل الخارجية للملاحة الحية الموجهة بالصوت 100%
+//////////////////////////////////////
+
+function openGoogleMaps(){
+
+    if(
+        currentLat === null ||
+        targetLat === null
+    ){
+        alert("حدد وجهتك وقم بتفعيل الـ GPS أولاً");
+        return;
+    }
+
+    // رابط متطور يجبر الهواتف الذكية على فتح تطبيق خرائط جوجل الفعلي بوضع الملاحة الحية والقيادة مباشرة (Driving Mode)
+    let url =
+        `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${targetLat},${targetLng}&travelmode=driving`;
+
+    window.open(url,'_blank');
+
+}
+
+//////////////////////////////////////
+// تشغيل الخريطة الأساسية عند البدء
+//////////////////////////////////////
+
 window.onload = initMap;
+
 </script>
 
 </body>
