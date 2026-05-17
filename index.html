@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>نظام Traking العالمي المستقر</title>
+<title>نظام الملاحة العالمي الذكي</title>
 
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -191,19 +191,19 @@ button:hover{
 
 <div class="container">
 
-<h1>🛰️ المستكشف العالمي الذكي</h1>
+<h1>🛰️ المستكشف العالمي الذكي (العالمي)</h1>
 
 <div class="status">
     <div class="dot" id="statusDot"></div>
-    <span id="gpsStatus">في انتظار تشغيل GPS أو تحديد وجهة...</span>
+    <span id="gpsStatus">في انتظار تشغيل GPS أو تحديد وجهة عالمية...</span>
 </div>
 
 <button class="gps-btn" onclick="startLiveTracking()">
-📍 تشغيل التتبع المباشر عالي الدقة GPS
+📍 تشغيل التتبع المباشر (عالي الدقة)
 </button>
 
 <div class="toggle-container">
-    <span>🔒 تثبيت الشاشة وتتبع حركتي تلقائياً</span>
+    <span>🔒 تثبيت الشاشة والمتابعة التلقائية</span>
     <input type="checkbox" id="autoCenterCheck" checked style="width: auto; cursor: pointer;">
 </div>
 
@@ -212,29 +212,29 @@ button:hover{
 </button>
 
 <div class="input-group">
-    <label>الوجهة المطلوبة:</label>
-    <input type="text" id="targetInput" placeholder="اكتب المكان أو المدينة واضغط بدء">
+    <label>الوجهة المطلوبة (دعم كامل لكافة دول العالم):</label>
+    <input type="text" id="targetInput" placeholder="اكتب الدولة، المدينة، أو اسم المكان الفعلي">
 </div>
 
 <button class="search-btn" onclick="searchDestination()">
-🚀 بدء الملاحة الذكية
+🚀 بدء البحث والملاحة العابرة للحدود
 </button>
 
 <div id="map"></div>
 
 <div class="card">
-    <h3>📌 نقطة الانطلاق</h3>
+    <h3>📌 الإحداثيات الحالية (موقعك الفعلي)</h3>
     <div id="startText">لم يتم تحديد الموقع بعد</div>
 </div>
 
 <div class="card">
-    <h3>🎯 الوجهة</h3>
+    <h3>🎯 الوجهة الحالية المستهدفة</h3>
     <div id="targetText">لا توجد وجهة حالياً</div>
 </div>
 
 <div class="card">
     <h3 style="text-align:center;color:#10b981">
-        📏 المسافة المتبقية (عبر الطرقات)
+        📏 المسافة التقريبية داخل التطبيق
     </h3>
 
     <div class="distance" id="distanceBox">
@@ -242,12 +242,12 @@ button:hover{
     </div>
 
     <div class="small" style="text-align:center" id="accuracyText">
-        يتم تحديثها لحظياً بدقة طبقاً لمسار الشوارع الفعلي
+        اضغط على الزر بالأسفل للمطابقة الحية 100% مع سيرفرات Google Maps.
     </div>
 </div>
 
 <button class="maps-btn" onclick="openGoogleMaps()">
-🗺️ فتح الملاحة في خرائط جوجل
+🗺️ فتح الملاحة ومطابقة الأرقام في Google Maps
 </button>
 
 </div>
@@ -270,11 +270,9 @@ let currentLng = null;
 let targetLat = null;
 let targetLng = null;
 
-//////////////////////////////////////
-// تشغيل الخريطة
-//////////////////////////////////////
+// تهيئة الخريطة الأساسية وإعدادها لتبدأ برؤية كوكب الأرض بالكامل
 function initMap(){
-    map = L.map('map').setView([26.8206,30.8025], 6);
+    map = L.map('map').setView([20.0, 0.0], 2); // زاوية رؤية واسعة جداً تشمل كل القارات والدول
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
@@ -283,11 +281,11 @@ function initMap(){
 }
 
 //////////////////////////////////////
-// تشغيل GPS المباشر عالي الدقة
+// نظام الـ GPS المباشر عالي الدقة
 //////////////////////////////////////
 function startLiveTracking(){
     if(!navigator.geolocation){
-        alert("المتصفح لا يدعم تحديد الموقع GPS");
+        alert("جهازك لا يدعم مستشعرات تحديد الموقع الحية.");
         return;
     }
 
@@ -300,14 +298,13 @@ function startLiveTracking(){
     const gpsOptions = {
         enableHighAccuracy: true, 
         maximumAge: 0,            
-        timeout: 6000             
+        timeout: 5000             
     };
 
     watchId = navigator.geolocation.watchPosition(
         function(position){
-            // مصفاة لمنع قفزات الموقع الوهمية خارج الشارع
+            // موازنة الحركة السريعة
             if (position.coords.accuracy > 40 && currentLat !== null) {
-                document.getElementById("accuracyText").innerText = `إشارة ضعيفة (نسبة الخطأ ±${Math.round(position.coords.accuracy)} متر)...`;
                 return; 
             }
 
@@ -316,8 +313,8 @@ function startLiveTracking(){
 
             document.getElementById("statusDot").classList.remove("blink");
             document.getElementById("statusDot").style.background = "#10b981";
-            document.getElementById("gpsStatus").innerText = "GPS متصل والتتبع يعمل مباشرة 📡";
-            document.getElementById("accuracyText").innerText = `دقة الإشارة الحالية: ±${Math.round(position.coords.accuracy)} متر`;
+            document.getElementById("gpsStatus").innerText = "مستشعر الـ GPS متصل ويعمل عالمياً بنجاح 🛰️";
+            document.getElementById("accuracyText").innerText = `دقة التقاط القمر الصناعي: ±${Math.round(position.coords.accuracy)} متر`;
 
             updateUserMarker();
 
@@ -328,9 +325,7 @@ function startLiveTracking(){
         function(error){
             console.error(error);
             document.getElementById("statusDot").style.background = "#ef4444";
-            document.getElementById("statusDot").classList.remove("blink");
-            document.getElementById("gpsStatus").innerText = "فشل الوصول للموقع";
-            alert("تأكد من تفعيل صلاحيات الموقع وتشغيل الـ GPS على جهازك.");
+            document.getElementById("gpsStatus").innerText = "فشل التقاط إشارة الـ GPS الداعمة للملاحة";
         },
         gpsOptions
     );
@@ -340,17 +335,13 @@ function stopTracking(){
     if(watchId !== null){
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
-        document.getElementById("gpsStatus").innerText = "تم إيقاف التتبع";
+        document.getElementById("gpsStatus").innerText = "تم إيقاف التتبع النشط";
         document.getElementById("statusDot").style.background = "#f59e0b";
-        document.getElementById("statusDot").classList.remove("blink");
     }
 }
 
-//////////////////////////////////////
-// تحديث ماركر المستخدم
-//////////////////////////////////////
 function updateUserMarker(){
-    document.getElementById("startText").innerText = `الموقع الحالي:\n${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
+    document.getElementById("startText").innerText = `${currentLat.toFixed(6)}, ${currentLng.toFixed(6)}`;
 
     if(userMarker){
         userMarker.setLatLng([currentLat, currentLng]);
@@ -367,25 +358,30 @@ function updateUserMarker(){
 }
 
 //////////////////////////////////////
-// البحث عن الوجهة
+// محرك البحث العالمي العابر للقارات والدول
 //////////////////////////////////////
 async function searchDestination(){
     let query = document.getElementById("targetInput").value.trim();
 
     if(!query){
-        alert("اكتب اسم الوجهة أولاً");
+        alert("رجاءً اكتب وجهتك المطلوبة أولاً (مثال: دبي، القاهرة، باريس، فندق...)");
         return;
     }
 
+    document.getElementById("targetText").innerText = "جاري البحث في قاعدة البيانات العالمية... 🌍";
+
     try{
-        let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+        // استخدام سيرفر بحث Geocode المفتوح والسريع جداً لتفادي حظر الحدود والدول
+        let response = await fetch(`https://geocode.maps.co/search?q=${encodeURIComponent(query)}`);
         let data = await response.json();
 
-        if(data.length === 0){
-            alert("لم يتم العثور على المكان، اكتبه بشكل أوضح");
+        if(!data || data.length === 0){
+            alert("لم نتمكن من العثور على هذا المكان عالمياً، يرجى كتابة الاسم بشكل أدق (مثال: الرياض، السعودية)");
+            document.getElementById("targetText").innerText = "لا توجد وجهة حالياً";
             return;
         }
 
+        // التقاط أول وأدق نتيجة تظهر على الخريطة الدولية
         targetLat = parseFloat(data[0].lat);
         targetLng = parseFloat(data[0].lon);
         document.getElementById("targetText").innerText = data[0].display_name;
@@ -398,7 +394,7 @@ async function searchDestination(){
         }
     }catch(error){
         console.error(error);
-        alert("حدث خطأ أثناء البحث");
+        alert("عذراً، حدث خطأ في الشبكة أثناء الاتصال بالخادم العالمي.");
     }
 }
 
@@ -408,12 +404,15 @@ function updateTargetMarker(){
     }else{
         targetMarker = L.marker([targetLat, targetLng])
             .addTo(map)
-            .bindPopup("🎯 الوجهة");
+            .bindPopup("🎯 وجهتك المستهدفة");
     }
+    
+    // توجيه الكاميرا فوراً للوجهة الجديدة المحددة
+    map.setView([targetLat, targetLng], 12);
 }
 
 //////////////////////////////////////
-// حساب المسار والمسافة
+// رسم المسارات عبر الشوارع الدولية
 //////////////////////////////////////
 function drawRoute(){
     if(routeControl){
@@ -449,7 +448,7 @@ function drawRoute(){
         let bounds = L.latLngBounds([[currentLat, currentLng], [targetLat, targetLng]]);
         map.fitBounds(bounds, { padding: [50, 50] });
     } else {
-        map.setView([currentLat, currentLng], 15);
+        map.setView([currentLat, currentLng], 14);
     }
 }
 
@@ -461,11 +460,17 @@ function updateDistanceDisplay(distance){
     }
 }
 
+//////////////////////////////////////
+// الاستعانة بـ Google Maps الخارجي (الأرقام والمسافات الحية 100%)
+//////////////////////////////////////
 function openGoogleMaps(){
     if(currentLat === null || targetLat === null){
-        alert("حدد الوجهة وشغّل الـ GPS أولاً");
+        alert("يجب تحديد موقعك الحالي وتشغيل الـ GPS واختيار وجهتك أولاً حتى يتم التطابق.");
         return;
     }
+    
+    // هذا الرابط يستدعي تطبيق خرائط جوجل الرسمي المثبت على هاتف المستخدم مباشرة 
+    // وينقل له الإحداثيات ليعطيه المسافة والزمن والزحام المروري بدقة غوغل المطلقة 100%
     let url = `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${targetLat},${targetLng}&travelmode=driving`;
     window.open(url, '_blank');
 }
