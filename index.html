@@ -6,10 +6,7 @@
 
 <title>نظام التتبع العالمي الذكي</title>
 
-<!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-<!-- Routing Machine -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
 
 <style>
@@ -239,10 +236,7 @@ button:hover{
 
 </div>
 
-<!-- Leaflet -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<!-- Routing -->
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
 <script>
@@ -288,6 +282,7 @@ function startLiveTracking(){
     }
 
     document.getElementById("statusDot").classList.add("blink");
+
     document.getElementById("gpsStatus").innerText =
         "جاري الاتصال بالأقمار الصناعية...";
 
@@ -299,6 +294,7 @@ function startLiveTracking(){
             currentLng = position.coords.longitude;
 
             document.getElementById("statusDot").classList.remove("blink");
+
             document.getElementById("statusDot").style.background =
                 "#10b981";
 
@@ -386,7 +382,35 @@ function updateUserMarker(){
 
     }
 
-    map.setView([currentLat,currentLng],16);
+    // تتبع حي للخريطة
+
+    map.flyTo(
+        [currentLat,currentLng],
+        16,
+        {
+            animate:true,
+            duration:2
+        }
+    );
+
+    // إبقاء الطريق كامل ظاهر بالشاشة
+
+    if(
+        routeControl &&
+        targetLat !== null &&
+        targetLng !== null
+    ){
+
+        let bounds = L.latLngBounds([
+            [currentLat,currentLng],
+            [targetLat,targetLng]
+        ]);
+
+        map.fitBounds(bounds,{
+            padding:[50,50]
+        });
+
+    }
 
 }
 
