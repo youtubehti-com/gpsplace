@@ -187,7 +187,7 @@ button:hover{
 
 <div class="status">
     <div class="dot" id="statusDot"></div>
-    <span id="gpsStatus">في انتظار تحديد الوجهة أو تشغيل GPS...</span>
+    <span id="gpsStatus">في انتظار تشغيل GPS أو تحديد وجهة...</span>
 </div>
 
 <button class="gps-btn" onclick="startLiveTracking()">
@@ -262,8 +262,10 @@ let targetLng = null;
 //////////////////////////////////////
 // تشغيل الخريطة
 //////////////////////////////////////
+
 function initMap(){
-    map = L.map('map').setView([26.8206,30.8025], 6);
+
+    map = L.map('map').setView([26.8206,30.8025],6);
 
     L.tileLayer(
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -271,227 +273,335 @@ function initMap(){
             attribution:'© OpenStreetMap'
         }
     ).addTo(map);
+
 }
 
 //////////////////////////////////////
 // تشغيل GPS المباشر
 //////////////////////////////////////
-function startLiveTracking(callback = null){
+
+function startLiveTracking(){
+
     if(!navigator.geolocation){
         alert("المتصفح لا يدعم GPS");
         return;
     }
 
-    // إذا كان التتبع يعمل بالفعل، لا داعي لإعادة تشغيله
-    if (watchId !== null) {
-        if(callback) callback();
+    // إذا كان التتبع يعمل مسبقاً لا داعي لإعادة إنشائه
+    if(watchId !== null) {
         return;
     }
 
     document.getElementById("statusDot").classList.add("blink");
-    document.getElementById("gpsStatus").innerText = "جاري الاتصال بالأقمار الصناعية وتحديد موقعك الحالي...";
+    document.getElementById("gpsStatus").innerText =
+        "جاري الاتصال بالأقمار الصناعية...";
 
     watchId = navigator.geolocation.watchPosition(
+
         function(position){
+
             currentLat = position.coords.latitude;
             currentLng = position.coords.longitude;
 
             document.getElementById("statusDot").classList.remove("blink");
-            document.getElementById("statusDot").style.background = "#10b981";
-            document.getElementById("gpsStatus").innerText = "GPS متصل والتتبع يعمل مباشرة 📡";
+            document.getElementById("statusDot").style.background =
+                "#10b981";
+
+            document.getElementById("gpsStatus").innerText =
+                "GPS متصل والتتبع يعمل مباشرة 📡";
 
             updateUserMarker();
 
             if(targetLat !== null && targetLng !== null){
+
                 drawRoute();
+
                 updateDistance();
+
             }
 
-            // تنفيذ دالة تراجعية بعد جلب أول قراءة للموقع بنجاح (إن وجدت)
-            if(callback) {
-                callback();
-                callback = null; // تصفيرها لتفادي التكرار مع كل حركة
-            }
         },
+
         function(error){
+
             console.log(error);
-            document.getElementById("statusDot").style.background = "#ef4444";
-            document.getElementById("gpsStatus").innerText = "فشل الوصول للموقع الحالي";
-            alert("تأكد من:\n\n1- السماح للموقع الجغرافي للمتصفح\n2- تفعيل الـ GPS في جهازك\n3- استخدام بروتوكول آمن HTTPS");
+
+            document.getElementById("statusDot").style.background =
+                "#ef4444";
+
+            document.getElementById("gpsStatus").innerText =
+                "فشل الوصول للموقع";
+
+            alert(
+                "تأكد من:\n\n1- السماح للموقع\n2- تشغيل GPS\n3- استخدام HTTPS"
+            );
+
         },
+
         {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 10000
+            enableHighAccuracy:true,
+            maximumAge:0,
+            timeout:10000
         }
+
     );
+
 }
 
 //////////////////////////////////////
 // إيقاف التتبع
 //////////////////////////////////////
+
 function stopTracking(){
+
     if(watchId !== null){
+
         navigator.geolocation.clearWatch(watchId);
+
         watchId = null;
-        document.getElementById("gpsStatus").innerText = "تم إيقاف التتبع";
-        document.getElementById("statusDot").style.background = "#f59e0b";
+
+        document.getElementById("gpsStatus").innerText =
+            "تم إيقاف التتبع";
+
+        document.getElementById("statusDot").style.background =
+            "#f59e0b";
+
     }
+
 }
 
 //////////////////////////////////////
 // تحديث ماركر المستخدم
 //////////////////////////////////////
+
 function updateUserMarker(){
+
     document.getElementById("startText").innerText =
         `الموقع الحالي:\n${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
 
     if(userMarker){
+
         userMarker.setLatLng([currentLat,currentLng]);
+
     }else{
+
         userMarker = L.marker([currentLat,currentLng])
             .addTo(map)
             .bindPopup("📍 موقعك الحالي");
+
     }
 
-    // إذا لم تكن هناك وجهة بعد، ركز الخريطة على المستخدم
-    if (targetLat === null) {
-        map.setView([currentLat,currentLng], 15);
+    // إذا لم تكن هناك وجهة محددة بعد، يتم تمرير الخريطة لموقع المستخدم
+    if(targetLat === null || targetLng === null) {
+        map.setView([currentLat,currentLng],16);
     }
+
 }
 
 //////////////////////////////////////
-// البحث عن الوجهة (تم تعديلها لتفعيل الـ GPS تلقائياً)
+// البحث عن الوجهة وتفعيل الـ GPS تلقائياً
 //////////////////////////////////////
+
 async function searchDestination(){
-    let query = document.getElementById("targetInput").value.trim();
+
+    let query =
+        document.getElementById("targetInput").value.trim();
 
     if(!query){
-        alert("اكتب اسم الوجهة أولاً");
+
+        alert("اكتب اسم الوجهة");
+
         return;
     }
 
     try{
-        // 1. جلب بيانات إحداثيات المكان المطلوب من الإنترنت عبر API الخرائط
+
         let response = await fetch(
             `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`
         );
+
         let data = await response.json();
 
         if(data.length === 0){
-            alert("لم يتم العثور على المكان المقترح، يرجى كتابة الاسم بشكل أدق");
+
+            alert("لم يتم العثور على المكان");
+
             return;
         }
 
         targetLat = parseFloat(data[0].lat);
         targetLng = parseFloat(data[0].lon);
+
         let placeName = data[0].display_name;
 
-        document.getElementById("targetText").innerText = placeName;
+        document.getElementById("targetText").innerText =
+            placeName;
+
         updateTargetMarker();
 
-        // 2. تفعيل الـ GPS للمستخدم تلقائياً فور العثور على الوجهة لبدء الملاحة مباشرة
-        startLiveTracking(function() {
-            // يتم استدعاء هذا الجزء فور التقاط إحداثيات GPS للمستخدم
-            if(currentLat !== null && currentLng !== null){
-                drawRoute();
-                updateDistance();
-                
-                // احتواء الخريطة لتظهر نقطة البداية والنهاية معاً بشكل مثالي
-                let bounds = L.latLngBounds([
-                    [currentLat, currentLng],
-                    [targetLat, targetLng]
-                ]);
-                map.fitBounds(bounds, { padding: [50, 50] });
-            }
-        });
+        // تفعيل الـ GPS تلقائياً فور العثور على الهدف للبدء بالملاحة المباشرة
+        startLiveTracking();
+
+        if(currentLat !== null && currentLng !== null){
+
+            drawRoute();
+
+            updateDistance();
+
+        }
 
     }catch(error){
+
         console.log(error);
-        alert("حدث خطأ أثناء الاتصال بالإنترنت والبحث عن المكان");
+
+        alert("حدث خطأ أثناء البحث");
+
     }
+
 }
 
 //////////////////////////////////////
 // تحديث ماركر الوجهة
 //////////////////////////////////////
+
 function updateTargetMarker(){
+
     if(targetMarker){
+
         targetMarker.setLatLng([targetLat,targetLng]);
+
     }else{
+
         targetMarker = L.marker([targetLat,targetLng])
             .addTo(map)
-            .bindPopup("🎯 الوجهة المستهدفة");
+            .bindPopup("🎯 الوجهة");
+
     }
+
 }
 
 //////////////////////////////////////
 // رسم الطريق الحقيقي
 //////////////////////////////////////
+
 function drawRoute(){
+
     if(routeControl){
+
         map.removeControl(routeControl);
+
     }
 
     routeControl = L.Routing.control({
+
         waypoints:[
             L.latLng(currentLat,currentLng),
             L.latLng(targetLat,targetLng)
         ],
+
         routeWhileDragging:false,
+
         draggableWaypoints:false,
+
         addWaypoints:false,
+
         show:false,
+
         createMarker:function(){
-            return null; // الاعتماد على الماركرز الخاصة بنا المبنية مسبقاً
+            return null;
         }
+
     }).addTo(map);
+
+    // احتواء الخريطة تلقائياً لعرض نقطة البداية والنهاية معاً ومتابعة التحرك بشكل أفضل
+    let bounds = L.latLngBounds([
+        [currentLat, currentLng],
+        [targetLat, targetLng]
+    ]);
+    map.fitBounds(bounds, { padding: [50, 50] });
+
 }
 
 //////////////////////////////////////
 // حساب المسافة
 //////////////////////////////////////
+
 function updateDistance(){
-    let distance = calculateDistance(currentLat, currentLng, targetLat, targetLng);
+
+    let distance =
+        calculateDistance(
+            currentLat,
+            currentLng,
+            targetLat,
+            targetLng
+        );
 
     if(distance >= 1000){
-        document.getElementById("distanceBox").innerText = (distance/1000).toFixed(2) + " كم";
+
+        document.getElementById("distanceBox").innerText =
+            (distance/1000).toFixed(2) + " كم";
+
     }else{
-        document.getElementById("distanceBox").innerText = Math.round(distance) + " متر";
+
+        document.getElementById("distanceBox").innerText =
+            Math.round(distance) + " متر";
+
     }
+
 }
 
 //////////////////////////////////////
-// قانون هافرسين لحساب المسافات على كوكب الأرض
+// قانون هافرسين
 //////////////////////////////////////
+
 function calculateDistance(lat1,lon1,lat2,lon2){
-    const R = 6371e3; // نصف قطر الأرض بالمتر
+
+    const R = 6371e3;
+
     const φ1 = lat1 * Math.PI/180;
     const φ2 = lat2 * Math.PI/180;
+
     const Δφ = (lat2-lat1) * Math.PI/180;
     const Δλ = (lon2-lon1) * Math.PI/180;
 
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-              
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a =
+        Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+        Math.cos(φ1) * Math.cos(φ2) *
+        Math.sin(Δλ/2) * Math.sin(Δλ/2);
+
+    const c =
+        2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 
     return R * c;
+
 }
 
 //////////////////////////////////////
-// فتح خرائط جوجل للملاحة الخارجية
+// فتح خرائط جوجل
 //////////////////////////////////////
+
 function openGoogleMaps(){
-    if(currentLat === null || targetLat === null){
-        alert("يرجى إدخال الوجهة والانتظار حتى يتم تحديد موقعك الحالي أولاً");
+
+    if(
+        currentLat === null ||
+        targetLat === null
+    ){
+
+        alert("حدد الوجهة أولاً");
+
         return;
     }
 
-    let url = `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${targetLat},${targetLng}`;
+    let url =
+        `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${targetLat},${targetLng}`;
+
     window.open(url,'_blank');
+
 }
+
+//////////////////////////////////////
+// تشغيل الخريطة
+//////////////////////////////////////
 
 window.onload = initMap;
 
