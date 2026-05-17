@@ -221,7 +221,7 @@ button:hover{
 
 <div class="card">
     <h3 style="text-align:center;color:#10b981">
-        📏 المسافة المتبقية
+        📏 المسافة المتبقية (عبر الطرقات)
     </h3>
 
     <div class="distance" id="distanceBox">
@@ -229,7 +229,7 @@ button:hover{
     </div>
 
     <div class="small" style="text-align:center">
-        يتم تحديثها لحظياً أثناء الحركة
+        يتم تحديثها لحظياً بدقة طبقاً لمسار الشوارع الفعلي
     </div>
 </div>
 
@@ -315,8 +315,6 @@ function startLiveTracking(){
             if(targetLat !== null && targetLng !== null){
 
                 drawRoute();
-
-                updateDistance();
 
             }
 
@@ -446,8 +444,6 @@ async function searchDestination(){
 
             drawRoute();
 
-            updateDistance();
-
         }
 
     }catch(error){
@@ -481,7 +477,7 @@ function updateTargetMarker(){
 }
 
 //////////////////////////////////////
-// رسم الطريق الحقيقي
+// رسم الطريق الحقيقي وحساب المسافة بدقة من الخادم
 //////////////////////////////////////
 
 function drawRoute(){
@@ -513,6 +509,17 @@ function drawRoute(){
 
     }).addTo(map);
 
+    // الاستماع لحدث العثور على المسار لاستخراج المسافة الحقيقية الدقيقة بالشوارع
+    routeControl.on('routesfound', function(e) {
+        let routes = e.routes;
+        let summary = routes[0].summary;
+        
+        // المسافة المستلمة من الخادم تكون بالمتر الفعلي للطريق
+        let distanceInMeters = summary.totalDistance; 
+
+        updateDistanceDisplay(distanceInMeters);
+    });
+
     // احتواء الخريطة تلقائياً لعرض نقطة البداية والنهاية معاً ومتابعة التحرك بشكل أفضل
     let bounds = L.latLngBounds([
         [currentLat, currentLng],
@@ -523,18 +530,10 @@ function drawRoute(){
 }
 
 //////////////////////////////////////
-// حساب المسافة
+// عرض المسافة المحدثة في واجهة المستخدم
 //////////////////////////////////////
 
-function updateDistance(){
-
-    let distance =
-        calculateDistance(
-            currentLat,
-            currentLng,
-            targetLat,
-            targetLng
-        );
+function updateDistanceDisplay(distance){
 
     if(distance >= 1000){
 
@@ -547,32 +546,6 @@ function updateDistance(){
             Math.round(distance) + " متر";
 
     }
-
-}
-
-//////////////////////////////////////
-// قانون هافرسين
-//////////////////////////////////////
-
-function calculateDistance(lat1,lon1,lat2,lon2){
-
-    const R = 6371e3;
-
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
-
-    const Δφ = (lat2-lat1) * Math.PI/180;
-    const Δλ = (lon2-lon1) * Math.PI/180;
-
-    const a =
-        Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-        Math.cos(φ1) * Math.cos(φ2) *
-        Math.sin(Δλ/2) * Math.sin(Δλ/2);
-
-    const c =
-        2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-
-    return R * c;
 
 }
 
