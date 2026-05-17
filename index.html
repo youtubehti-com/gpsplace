@@ -272,6 +272,30 @@
         let currentLng = null;  
         let targetLat = null;  
         let targetLng = null;  
+
+        // قاموس العواصم الذكي لحل مشكلة إحداثيات الدول العشوائية بالـ API
+        const countryCapitalsFallback = {
+            "الولايات المتحدة الأمريكية": { name: "واشنطن العاصمة (توجيه تلقائي لحماية المسافة)", lat: 38.8951, lng: -77.0364 },
+            "الولايات المتحدة": { name: "واشنطن العاصمة (توجيه تلقائي لحماية المسافة)", lat: 38.8951, lng: -77.0364 },
+            "امريكا": { name: "واشنطن العاصمة (توجيه تلقائي لحماية المسافة)", lat: 38.8951, lng: -77.0364 },
+            "أمريكا": { name: "واشنطن العاصمة (توجيه تلقائي لحماية المسافة)", lat: 38.8951, lng: -77.0364 },
+            "usa": { name: "Washington D.C. (Fallback)", lat: 38.8951, lng: -77.0364 },
+            "united states": { name: "Washington D.C. (Fallback)", lat: 38.8951, lng: -77.0364 },
+            "اليابان": { name: "طوكيو (توجيه تلقائي للاتزان الجغرافي)", lat: 35.6762, lng: 139.6503 },
+            "japan": { name: "Tokyo (Fallback)", lat: 35.6762, lng: 139.6503 },
+            "المملكة المتحدة": { name: "لندن", lat: 51.5074, lng: -0.1278 },
+            "بريطانيا": { name: "لندن", lat: 51.5074, lng: -0.1278 },
+            "فرنسا": { name: "باريس", lat: 48.8566, lng: 2.3522 },
+            "روسيا": { name: "موسكو", lat: 55.7558, lng: 37.6173 },
+            "الصين": { name: "بكين", lat: 39.9042, lng: 116.4074 },
+            "مصر": { name: "القاهرة", lat: 30.0444, lng: 31.2357 },
+            "المملكة العربية السعودية": { name: "الرياض", lat: 24.7136, lng: 46.6753 },
+            "السعودية": { name: "الرياض", lat: 24.7136, lng: 46.6753 },
+            "كندا": { name: "أوتاوا", lat: 45.4215, lng: -75.6972 },
+            "أستراليا": { name: "كانبرا", lat: -35.2809, lng: 149.1300 },
+            "استراليا": { name: "كانبرا", lat: -35.2809, lng: 149.1300 },
+            "ألمانيا": { name: "برلين", lat: 52.5200, lng: 13.4050 }
+        };
           
         // تهيئة الخريطة  
         function initMap(){  
@@ -351,6 +375,22 @@
               
             document.getElementById("targetText").innerText = "جاري الفرز والتحليل الجغرافي المعقد... 🌍";  
               
+            // فحص فوري: لو المدخل دولة مسجلة بالقاموس لحمايتها من العشوائية الإدارية لـ Nominatim
+            let cleanQuery = query.toLowerCase().replace(/أ/g, "ا").replace(/إ/g, "ا").replace(/آ/g, "ا");
+            let fallbackKey = Object.keys(countryCapitalsFallback).find(key => {
+                let cleanKey = key.toLowerCase().replace(/أ/g, "ا").replace(/إ/g, "ا").replace(/آ/g, "ا");
+                return cleanQuery === cleanKey;
+            });
+
+            if(fallbackKey){  
+                let fallbackData = countryCapitalsFallback[fallbackKey];  
+                targetLat = fallbackData.lat;  
+                targetLng = fallbackData.lng;  
+                document.getElementById("targetText").innerText = `${query} - العاصمة المعتمدة ملاحياً: ${fallbackData.name}`;  
+                executePostSearchProcessing();  
+                return;  
+            }
+
             try{  
                 // إضافة فلاتر تحسين جودة البحث وضمان جلب المركز الحقيقي للدولة بدلاً من أطرافها  
                 let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&polygon_threshold=0.5`;  
@@ -368,22 +408,26 @@
                 targetLng = parseFloat(data[0].lon);  
                 document.getElementById("targetText").innerText = data[0].display_name;  
                   
-                isUserInteracting = false;  
-                updateTargetMarker();  
-                  
-                // إذا لم يكن الـ GPS يعمل، نضع نقطة انطلاق افتراضية (مثال: القاهرة) للتجربة والمحاكاة الفورية  
-                if(currentLat === null){  
-                    currentLat = 30.0444;  
-                    currentLng = 31.2357;  
-                    updateUserMarker();  
-                }  
-                  
-                calculateGlobalDistance();  
+                executePostSearchProcessing();
             }catch(error){  
                 console.error(error);  
                 alert("عذراً، حدث خطأ أثناء جلب البيانات الجغرافية من السيرفر.");  
             }  
         }  
+
+        function executePostSearchProcessing(){
+            isUserInteracting = false;  
+            updateTargetMarker();  
+              
+            // إذا لم يكن الـ GPS يعمل، نضع نقطة انطلاق افتراضية (مثال: القاهرة) للتجربة والمحاكاة الفورية  
+            if(currentLat === null){  
+                currentLat = 30.0444;  
+                currentLng = 31.2357;  
+                updateUserMarker();  
+            }  
+              
+            calculateGlobalDistance();  
+        }
           
         function updateTargetMarker(){  
             if(targetMarker){  
@@ -406,9 +450,16 @@
                 let response = await fetch(osrmUrl);  
                 let result = await response.json();  
                   
-                // شرط الأمان الصارم: التحقق من وجود مسار بري منطقي وحقيقي وليس خطأ عابر للبحار  
-                if(result.code === 'Ok' && result.routes && result.routes.length > 0 && result.routes[0].distance > 0) {  
+                // شرط الأمان الصارم والجديد: التحقق من وجود مسار ومنطقية المدة الزمنية (route.duration) لمنع أخطاء الـ OSRM عابر القارات  
+                if(result.code === 'Ok' && result.routes && result.routes.length > 0) {  
                     let route = result.routes[0];  
+                    
+                    // إذا كان الوقت المستغرق صفر أو ضخم جداً بصورة مريبة أو المسافة مقطوعة بالبحر بشكل خاطئ  
+                    if(route.duration === 0 || route.duration > 3500000 || (Math.abs(currentLng - targetLng) > 30 && route.duration < 10000)) {
+                        triggerAirDistanceFallback();
+                        return;
+                    }
+
                     let distanceInMeters = route.distance;  
                       
                     // رسم مسار القيادة الفعلي بالشوارع على الخريطة  
@@ -433,19 +484,49 @@
             }  
         }  
           
-        // نظام التحويل التلقائي الذكي للمسافات الجوية وعابرات القارات  
+        // نظام التحويل التلقائي الذكي للمسافات الجوية وعابرات القارات (Great Circle Algorithm الملاحي الحقيقي)
         function triggerAirDistanceFallback(){  
             let airDistanceMeters = haversineDistance(currentLat, currentLng, targetLat, targetLng);  
               
-            // لمنع الخطوط المستقيمة الوهمية المسطحة، نقوم برسم خط ملاحي منحنٍ (Great Circle Approximation)  
+            // حساب المسار الدائري العظيم (Great Circle Geodesic Path) لمحاكاة خطوط الملاحة الجوية المنحنية حقيقةً
             let points = [];  
-            let steps = 50;  
+            let steps = 60;  
+            
+            let d2r = Math.PI / 180;
+            let r2d = 180 / Math.PI;
+            
+            let lat1 = currentLat * d2r;
+            let lon1 = currentLng * d2r;
+            let lat2 = targetLat * d2r;
+            let lon2 = targetLng * d2r;
+            
+            // حساب المسافة بالزاوية الكروية
+            let d = 2 * Math.asin(Math.sqrt(Math.pow(Math.sin((lat1 - lat2) / 2), 2) + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin((lon1 - lon2) / 2), 2)));
+            
             for (let i = 0; i <= steps; i++) {  
                 let f = i / steps;  
-                // معادلة الاستيفاء الخطي الملاحي بين النقطتين لتوليد مسار يحاكي انحناء الكوكب الحقيقي  
-                let lat = currentLat + (targetLat - currentLat) * f;  
-                let lng = currentLng + (targetLng - currentLng) * f;  
-                points.push([lat, lng]);  
+                
+                // معادلة الاستيفاء الجيوديسي الملاحي الحقيقي الكروي (Great Circle Interpolation)
+                let A = Math.sin((1 - f) * d) / Math.sin(d);
+                let B = Math.sin(f * d) / Math.sin(d);
+                
+                let x = A * Math.cos(lat1) * Math.cos(lon1) + B * Math.cos(lat2) * Math.cos(lon2);
+                let y = A * Math.cos(lat1) * Math.sin(lon1) + B * Math.cos(lat2) * Math.sin(lon2);
+                let z = A * Math.sin(lat1) + B * Math.sin(lat2);
+                
+                let lat = Math.atan2(z, Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2))) * r2d;
+                let lon = Math.atan2(y, x) * r2d;
+                
+                // التعامل الذكي مع الالتفاف عبر خط التاريخ الدولي لمنع انقطاع الرسم البصري للخريطة
+                if (points.length > 0) {
+                    let prevLon = points[points.length - 1][1];
+                    if (Math.abs(lon - prevLon) > 180) {
+                        if (lon > prevLon) lon -= 360;
+                        else lon += 360;
+                    }
+                }
+                
+                points.push([lat, lon]);  
             }  
               
             currentPolyline = L.polyline(points, {   
@@ -487,7 +568,7 @@
                 typeBox.innerText = "🚗 مسار قيادة بري حقيقي بالشوارع";  
             } else {  
                 typeBox.className = "route-type type-air";  
-                typeBox.innerText = "✈️ مسافة جوية مباشرة (لا يوجد طريق بري متصل)";  
+                typeBox.innerText = "✈️ مسار ملاحي حقيقي (Great Circle Path)";  
             }  
         }  
           
