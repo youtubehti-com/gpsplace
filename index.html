@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>نظام التتبع العالمي الذكي</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<!-- Routing Machine -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
+
+<style>
+
+:root{
+    --bg:#0f172a;
+    --card:rgba(30,41,59,.8);
+    --primary:#0d9488;
+    --accent:#f59e0b;
+    --gps:#2563eb;
+    --text:#ffffff;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Segoe UI',Tahoma,sans-serif;
+}
+
+body{
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:20px;
+}
+
+.container{
+    width:100%;
+    max-width:550px;
+    background:var(--card);
+    backdrop-filter:blur(10px);
+    border-radius:25px;
+    padding:20px;
+    box-shadow:0 20px 50px rgba(0,0,0,.5);
+}
+
+h1{
+    text-align:center;
+    color:var(--primary);
+    margin-bottom:15px;
+}
+
+.status{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:10px;
+    margin-bottom:15px;
+    font-size:.9rem;
+}
+
+.dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:#f59e0b;
+}
+
+.blink{
+    animation:blink 1s infinite alternate;
+}
+
+@keyframes blink{
+    from{opacity:.3;}
+    to{opacity:1;}
+}
+
+.input-group{
+    margin-bottom:15px;
+}
+
+label{
+    display:block;
+    margin-bottom:6px;
+    color:var(--accent);
+    font-weight:bold;
+}
+
+input{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:12px;
+    background:#1e293b;
+    color:white;
+    font-size:1rem;
+}
+
+input:focus{
+    outline:none;
+    border:2px solid var(--primary);
+}
+
+button{
+    width:100%;
+    padding:13px;
+    border:none;
+    border-radius:14px;
+    font-size:1rem;
+    font-weight:bold;
+    cursor:pointer;
+    transition:.3s;
+    margin-top:10px;
+}
+
+button:hover{
+    transform:translateY(-2px);
+}
+
+.gps-btn{
+    background:var(--gps);
+    color:white;
+}
+
+.search-btn{
+    background:var(--accent);
+    color:#111827;
+}
+
+.maps-btn{
+    background:var(--primary);
+    color:white;
+}
+
+.stop-btn{
+    background:#ef4444;
+    color:white;
+}
+
+#map{
+    width:100%;
+    height:350px;
+    margin-top:20px;
+    border-radius:18px;
+    overflow:hidden;
+}
+
+.card{
+    background:rgba(15,23,42,.8);
+    padding:15px;
+    border-radius:18px;
+    margin-top:15px;
+}
+
+.card h3{
+    color:var(--accent);
+    margin-bottom:10px;
+}
+
+.distance{
+    text-align:center;
+    font-size:2rem;
+    color:#10b981;
+    font-weight:bold;
+}
+
+.small{
+    font-size:.8rem;
+    opacity:.8;
+    margin-top:5px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🛰️ المستكشف العالمي الذكي</h1>
+
+<div class="status">
+    <div class="dot" id="statusDot"></div>
+    <span id="gpsStatus">في انتظار تشغيل GPS...</span>
+</div>
+
+<button class="gps-btn" onclick="startLiveTracking()">
+📍 تشغيل التتبع المباشر GPS
+</button>
+
+<button class="stop-btn" onclick="stopTracking()">
+⛔ إيقاف التتبع
+</button>
+
+<div class="input-group">
+    <label>الوجهة المطلوبة:</label>
+    <input type="text" id="targetInput" placeholder="اكتب المكان أو المدينة">
+</div>
+
+<button class="search-btn" onclick="searchDestination()">
+🚀 بدء الملاحة الذكية
+</button>
+
+<div id="map"></div>
+
+<div class="card">
+    <h3>📌 نقطة الانطلاق</h3>
+    <div id="startText">لم يتم تحديد الموقع بعد</div>
+</div>
+
+<div class="card">
+    <h3>🎯 الوجهة</h3>
+    <div id="targetText">لا توجد وجهة حالياً</div>
+</div>
+
+<div class="card">
+    <h3 style="text-align:center;color:#10b981">
+        📏 المسافة المتبقية
+    </h3>
+
+    <div class="distance" id="distanceBox">
+        --
+    </div>
+
+    <div class="small" style="text-align:center">
+        يتم تحديثها لحظياً أثناء الحركة
+    </div>
+</div>
+
+<button class="maps-btn" onclick="openGoogleMaps()">
+🗺️ فتح الملاحة في خرائط جوجل
+</button>
+
+</div>
+
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Routing -->
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+<script>
+
+let map;
+let userMarker;
+let targetMarker;
+let routeControl;
+let watchId = null;
+
+let currentLat = null;
+let currentLng = null;
+
+let targetLat = null;
+let targetLng = null;
+
+//////////////////////////////////////
+// تشغيل الخريطة
+//////////////////////////////////////
+
+function initMap(){
+
+    map = L.map('map').setView([26.8206,30.8025],6);
+
+    L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+            attribution:'© OpenStreetMap'
+        }
+    ).addTo(map);
+
+}
+
+//////////////////////////////////////
+// تشغيل GPS المباشر
+//////////////////////////////////////
+
+function startLiveTracking(){
+
+    if(!navigator.geolocation){
+        alert("المتصفح لا يدعم GPS");
+        return;
+    }
+
+    document.getElementById("statusDot").classList.add("blink");
+    document.getElementById("gpsStatus").innerText =
+        "جاري الاتصال بالأقمار الصناعية...";
+
+    watchId = navigator.geolocation.watchPosition(
+
+        function(position){
+
+            currentLat = position.coords.latitude;
+            currentLng = position.coords.longitude;
+
+            document.getElementById("statusDot").classList.remove("blink");
+            document.getElementById("statusDot").style.background =
+                "#10b981";
+
+            document.getElementById("gpsStatus").innerText =
+                "GPS متصل والتتبع يعمل مباشرة 📡";
+
+            updateUserMarker();
+
+            if(targetLat !== null && targetLng !== null){
+
+                drawRoute();
+
+                updateDistance();
+
+            }
+
+        },
+
+        function(error){
+
+            console.log(error);
+
+            document.getElementById("statusDot").style.background =
+                "#ef4444";
+
+            document.getElementById("gpsStatus").innerText =
+                "فشل الوصول للموقع";
+
+            alert(
+                "تأكد من:\n\n1- السماح للموقع\n2- تشغيل GPS\n3- استخدام HTTPS"
+            );
+
+        },
+
+        {
+            enableHighAccuracy:true,
+            maximumAge:0,
+            timeout:10000
+        }
+
+    );
+
+}
+
+//////////////////////////////////////
+// إيقاف التتبع
+//////////////////////////////////////
+
+function stopTracking(){
+
+    if(watchId !== null){
+
+        navigator.geolocation.clearWatch(watchId);
+
+        watchId = null;
+
+        document.getElementById("gpsStatus").innerText =
+            "تم إيقاف التتبع";
+
+        document.getElementById("statusDot").style.background =
+            "#f59e0b";
+
+    }
+
+}
+
+//////////////////////////////////////
+// تحديث ماركر المستخدم
+//////////////////////////////////////
+
+function updateUserMarker(){
+
+    document.getElementById("startText").innerText =
+        `الموقع الحالي:\n${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
+
+    if(userMarker){
+
+        userMarker.setLatLng([currentLat,currentLng]);
+
+    }else{
+
+        userMarker = L.marker([currentLat,currentLng])
+            .addTo(map)
+            .bindPopup("📍 موقعك الحالي");
+
+    }
+
+    map.setView([currentLat,currentLng],16);
+
+}
+
+//////////////////////////////////////
+// البحث عن الوجهة
+//////////////////////////////////////
+
+async function searchDestination(){
+
+    let query =
+        document.getElementById("targetInput").value.trim();
+
+    if(!query){
+
+        alert("اكتب اسم الوجهة");
+
+        return;
+    }
+
+    try{
+
+        let response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`
+        );
+
+        let data = await response.json();
+
+        if(data.length === 0){
+
+            alert("لم يتم العثور على المكان");
+
+            return;
+        }
+
+        targetLat = parseFloat(data[0].lat);
+        targetLng = parseFloat(data[0].lon);
+
+        let placeName = data[0].display_name;
+
+        document.getElementById("targetText").innerText =
+            placeName;
+
+        updateTargetMarker();
+
+        if(currentLat !== null && currentLng !== null){
+
+            drawRoute();
+
+            updateDistance();
+
+        }
+
+    }catch(error){
+
+        console.log(error);
+
+        alert("حدث خطأ أثناء البحث");
+
+    }
+
+}
+
+//////////////////////////////////////
+// تحديث ماركر الوجهة
+//////////////////////////////////////
+
+function updateTargetMarker(){
+
+    if(targetMarker){
+
+        targetMarker.setLatLng([targetLat,targetLng]);
+
+    }else{
+
+        targetMarker = L.marker([targetLat,targetLng])
+            .addTo(map)
+            .bindPopup("🎯 الوجهة");
+
+    }
+
+}
+
+//////////////////////////////////////
+// رسم الطريق الحقيقي
+//////////////////////////////////////
+
+function drawRoute(){
+
+    if(routeControl){
+
+        map.removeControl(routeControl);
+
+    }
+
+    routeControl = L.Routing.control({
+
+        waypoints:[
+            L.latLng(currentLat,currentLng),
+            L.latLng(targetLat,targetLng)
+        ],
+
+        routeWhileDragging:false,
+
+        draggableWaypoints:false,
+
+        addWaypoints:false,
+
+        show:false,
+
+        createMarker:function(){
+            return null;
+        }
+
+    }).addTo(map);
+
+}
+
+//////////////////////////////////////
+// حساب المسافة
+//////////////////////////////////////
+
+function updateDistance(){
+
+    let distance =
+        calculateDistance(
+            currentLat,
+            currentLng,
+            targetLat,
+            targetLng
+        );
+
+    if(distance >= 1000){
+
+        document.getElementById("distanceBox").innerText =
+            (distance/1000).toFixed(2) + " كم";
+
+    }else{
+
+        document.getElementById("distanceBox").innerText =
+            Math.round(distance) + " متر";
+
+    }
+
+}
+
+//////////////////////////////////////
+// قانون هافرسين
+//////////////////////////////////////
+
+function calculateDistance(lat1,lon1,lat2,lon2){
+
+    const R = 6371e3;
+
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a =
+        Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+        Math.cos(φ1) * Math.cos(φ2) *
+        Math.sin(Δλ/2) * Math.sin(Δλ/2);
+
+    const c =
+        2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+
+    return R * c;
+
+}
+
+//////////////////////////////////////
+// فتح خرائط جوجل
+//////////////////////////////////////
+
+function openGoogleMaps(){
+
+    if(
+        currentLat === null ||
+        targetLat === null
+    ){
+
+        alert("حدد الوجهة أولاً");
+
+        return;
+    }
+
+    let url =
+        `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${targetLat},${targetLng}`;
+
+    window.open(url,'_blank');
+
+}
+
+//////////////////////////////////////
+// تشغيل الخريطة
+//////////////////////////////////////
+
+window.onload = initMap;
+
+</script>
+
+</body>
+</html>
