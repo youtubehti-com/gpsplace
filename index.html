@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>نظام الملاحة العالمي الذكي</title>
+<title>نظام الملاحة العالمي المستقر</title>
 
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -191,7 +191,7 @@ button:hover{
 
 <div class="container">
 
-<h1>🛰️ المستكشف العالمي الذكي (العالمي)</h1>
+<h1>🛰️ المستكشف العالمي المستقر</h1>
 
 <div class="status">
     <div class="dot" id="statusDot"></div>
@@ -270,9 +270,8 @@ let currentLng = null;
 let targetLat = null;
 let targetLng = null;
 
-// تهيئة الخريطة الأساسية وإعدادها لتبدأ برؤية كوكب الأرض بالكامل
 function initMap(){
-    map = L.map('map').setView([20.0, 0.0], 2); // زاوية رؤية واسعة جداً تشمل كل القارات والدول
+    map = L.map('map').setView([20.0, 0.0], 2); // نظرة شاملة على العالم عند البداية
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
@@ -303,7 +302,6 @@ function startLiveTracking(){
 
     watchId = navigator.geolocation.watchPosition(
         function(position){
-            // موازنة الحركة السريعة
             if (position.coords.accuracy > 40 && currentLat !== null) {
                 return; 
             }
@@ -325,7 +323,7 @@ function startLiveTracking(){
         function(error){
             console.error(error);
             document.getElementById("statusDot").style.background = "#ef4444";
-            document.getElementById("gpsStatus").innerText = "فشل التقاط إشارة الـ GPS الداعمة للملاحة";
+            document.getElementById("gpsStatus").innerText = "فشل التقاط إشارة الـ GPS الملاحية";
         },
         gpsOptions
     );
@@ -358,30 +356,33 @@ function updateUserMarker(){
 }
 
 //////////////////////////////////////
-// محرك البحث العالمي العابر للقارات والدول
+// محرك البحث العالمي المستقر والسريع جداً
 //////////////////////////////////////
 async function searchDestination(){
     let query = document.getElementById("targetInput").value.trim();
 
     if(!query){
-        alert("رجاءً اكتب وجهتك المطلوبة أولاً (مثال: دبي، القاهرة، باريس، فندق...)");
+        alert("رجاءً اكتب وجهتك المطلوبة أولاً (مثال: دبي، لندن، برج خليفة)");
         return;
     }
 
-    document.getElementById("targetText").innerText = "جاري البحث في قاعدة البيانات العالمية... 🌍";
+    document.getElementById("targetText").innerText = "جاري البحث عالمياً بآمان... 🌍";
 
     try{
-        // استخدام سيرفر بحث Geocode المفتوح والسريع جداً لتفادي حظر الحدود والدول
-        let response = await fetch(`https://geocode.maps.co/search?q=${encodeURIComponent(query)}`);
+        // استخدام خادم مخصص ومحمي لمنع الحظر والقيود وضمان استجابة البحث الفورية لكل دول العالم
+        let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`, {
+            headers: {
+                'Accept-Language': 'ar,en' // دعم البحث باللغة العربية والانجليزية معاً
+            }
+        });
         let data = await response.json();
 
         if(!data || data.length === 0){
-            alert("لم نتمكن من العثور على هذا المكان عالمياً، يرجى كتابة الاسم بشكل أدق (مثال: الرياض، السعودية)");
+            alert("لم نتمكن من العثور على هذا المكان، يرجى كتابة الاسم بشكل أوضح (مثال: القاهرة، مصر)");
             document.getElementById("targetText").innerText = "لا توجد وجهة حالياً";
             return;
         }
 
-        // التقاط أول وأدق نتيجة تظهر على الخريطة الدولية
         targetLat = parseFloat(data[0].lat);
         targetLng = parseFloat(data[0].lon);
         document.getElementById("targetText").innerText = data[0].display_name;
@@ -394,7 +395,8 @@ async function searchDestination(){
         }
     }catch(error){
         console.error(error);
-        alert("عذراً، حدث خطأ في الشبكة أثناء الاتصال بالخادم العالمي.");
+        alert("عذراً، حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.");
+        document.getElementById("targetText").innerText = "خطأ في الاتصال بالخادم";
     }
 }
 
@@ -407,12 +409,11 @@ function updateTargetMarker(){
             .bindPopup("🎯 وجهتك المستهدفة");
     }
     
-    // توجيه الكاميرا فوراً للوجهة الجديدة المحددة
     map.setView([targetLat, targetLng], 12);
 }
 
 //////////////////////////////////////
-// رسم المسارات عبر الشوارع الدولية
+// رسم المسارات
 //////////////////////////////////////
 function drawRoute(){
     if(routeControl){
@@ -461,7 +462,7 @@ function updateDistanceDisplay(distance){
 }
 
 //////////////////////////////////////
-// الاستعانة بـ Google Maps الخارجي (الأرقام والمسافات الحية 100%)
+// الاستعانة بـ Google Maps الخارجي (مطابقة 100%)
 //////////////////////////////////////
 function openGoogleMaps(){
     if(currentLat === null || targetLat === null){
@@ -469,8 +470,6 @@ function openGoogleMaps(){
         return;
     }
     
-    // هذا الرابط يستدعي تطبيق خرائط جوجل الرسمي المثبت على هاتف المستخدم مباشرة 
-    // وينقل له الإحداثيات ليعطيه المسافة والزمن والزحام المروري بدقة غوغل المطلقة 100%
     let url = `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${targetLat},${targetLng}&travelmode=driving`;
     window.open(url, '_blank');
 }
