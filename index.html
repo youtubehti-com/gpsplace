@@ -3,217 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام التتبع والملاحة العالمي الاحترافي - المساعد الذكي</title>
-    <!-- Leaflet CSS -->
+    <title>نظام الملاحة العالمي - نسخة العمل النهائية</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
         :root{ --bg:#0f172a; --card:rgba(30,41,59,.8); --primary:#0d9488; --accent:#f59e0b; --gps:#2563eb; --text:#ffffff; --danger:#ef4444; --success:#10b981; --lost:#7c3aed; }
         *{ margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Tahoma,sans-serif; }
         body{ background:var(--bg); color:var(--text); min-height:100vh; display:flex; justify-content:center; align-items:center; padding:20px; }
         .container{ width:100%; max-width:600px; background:var(--card); backdrop-filter:blur(10px); border-radius:25px; padding:20px; box-shadow:0 20px 50px rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,0.1); }
-        h1{ text-align:center; color:var(--primary); margin-bottom:15px; font-size:1.6rem; }
-        .status{ display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:15px; font-size:.9rem; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 10px; }
-        .dot{ width:10px; height:10px; border-radius:50%; background:#f59e0b; }
-        .blink{ animation:blink 1s infinite alternate; }
-        @keyframes blink{ from{opacity:.3;} to{opacity:1;} }
-        .input-group{ margin-bottom:15px; position: relative; }
-        label{ display:block; margin-bottom:6px; color:var(--accent); font-weight:bold; }
-        input, select { width:100%; padding:12px; border:none; border-radius:12px; background:#1e293b; color:white; font-size:1rem; border: 1px solid rgba(255,255,255,0.1); }
-        input:focus, select:focus{ outline:none; border:2px solid var(--primary); }
+        h1{ text-align:center; color:var(--primary); margin-bottom:15px; font-size:1.5rem; }
         .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        button{ width:100%; padding:13px; border:none; border-radius:14px; font-size:0.95rem; font-weight:bold; cursor:pointer; transition:.3s; }
+        button{ width:100%; padding:13px; border:none; border-radius:14px; font-weight:bold; cursor:pointer; transition:.3s; }
         button:hover{ transform:translateY(-2px); filter: brightness(1.2); }
         .gps-btn{ background:var(--gps); color:white; }
-        .search-btn{ background:var(--accent); color:#111827; grid-column: span 2; font-size: 1.1rem;}
-        .maps-btn{ background:var(--primary); color:white; margin-top: 15px;}
         .stop-btn{ background:var(--danger); color:white; }
-        .share-btn{ background:var(--success); color:white; grid-column: span 2; margin-bottom: 10px; font-size: 1rem;}
-        .lost-section { background: rgba(124, 58, 237, 0.15); border: 2px dashed var(--lost); padding: 15px; border-radius: 20px; margin-bottom: 15px; }
-        .lost-title { color: #c084fc; text-align: center; margin-bottom: 12px; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .lost-btn { background: var(--lost); color: white; }
-        .save-btn { background: #4b5563; color: white; }
-        #map{ width:100%; height:380px; margin-top:20px; border-radius:18px; overflow:hidden; border: 2px solid rgba(255,255,255,0.05); }
-        .card{ background:rgba(15,23,42,.8); padding:15px; border-radius:18px; margin-top:15px; border: 1px solid rgba(255,255,255,0.05); }
-        .card h3{ color:var(--accent); margin-bottom:5px; font-size: 0.95rem; }
-        .card p { font-size: 0.9rem; color: #cbd5e1; }
-        .distance-container { text-align:center; background: linear-gradient(135deg, #1e293b, #0f172a); padding: 20px; border-radius: 18px; margin-top: 15px; border: 2px solid var(--primary); }
-        .distance{ font-size: 2.3rem; color:var(--success); font-weight:bold; text-shadow: 0 0 10px rgba(16,185,129,0.2); }
-        .route-type { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; margin-top: 5px; }
-        .type-land { background: rgba(16,185,129,0.2); color: var(--success); }
-        .type-air { background: rgba(245,158,11,0.2); color: var(--accent); }
-        .small{ font-size:.8rem; opacity:.8; margin-top:8px; color: #94a3b8; }
-        .toggle-container { display: flex; align-items: center; justify-content: space-between; background: #1e293b; padding: 10px 15px; border-radius: 12px; margin-bottom: 15px; font-size: 0.9rem; }
+        .search-btn{ background:var(--accent); color:#000; grid-column: span 2; }
+        .maps-btn{ background:var(--primary); color:white; width: 100%; margin-top: 15px; padding: 15px; font-size: 1.1rem; }
+        .share-btn{ background:var(--success); color:white; grid-column: span 2; margin: 10px 0; }
+        .lost-section { border: 2px dashed var(--lost); padding: 15px; border-radius: 20px; margin-bottom: 15px; background: rgba(124, 58, 237, 0.1); }
+        #map{ width:100%; height:350px; border-radius:15px; margin-top:15px; border: 2px solid #334155; }
+        .distance-container { text-align:center; background: #1e293b; padding: 15px; border-radius: 15px; margin-top: 15px; }
+        .distance{ font-size: 2rem; color:var(--success); font-weight:bold; }
+        input, select { width:100%; padding:12px; border-radius:10px; background:#0f172a; color:white; border: 1px solid #334155; margin-top: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🛰️ الملاح العالمي الاحترافي المطور</h1>
-        <div class="status"><div class="dot" id="statusDot"></div><span id="gpsStatus">في انتظار تشغيل GPS أو تحديد وجهة...</span></div>
+        <h1>🛰️ نظام الملاحة المطور</h1>
         <div class="btn-grid">
-            <button class="gps-btn" onclick="startLiveTracking()">📍 تشغيل الـ GPS الحي</button>
-            <button class="stop-btn" onclick="stopTracking()">⛔ إيقاف التتبع</button>
+            <button class="gps-btn" onclick="startTracking()">📍 تشغيل الموقع</button>
+            <button class="stop-btn" onclick="stopTracking()">⛔ إيقاف</button>
         </div>
-        <div class="toggle-container">
-            <span>🔒 تثبيت الشاشة والمتابعة التلقائية</span>
-            <input type="checkbox" id="autoCenterCheck" checked style="width: auto; cursor: pointer;">
-        </div>
+        
         <div class="lost-section">
-            <div class="lost-title">🛑 نظام الطوارئ والمساعدة (أنا تائه)</div>
+            <h3 style="color:#c084fc; text-align:center; margin-bottom:10px;">نظام الطوارئ (أنا تائه)</h3>
             <div class="btn-grid">
-                <button class="save-btn" onclick="saveCurrentLocation()">💾 حفظ موقعي الحالي كبداية</button>
-                <button class="lost-btn" onclick="returnToStartLocation()">🔄 العودة لموقع البدء</button>
+                <button style="background:#475569; color:white;" onclick="saveLocation()">💾 حفظ موقعي الحالي</button>
+                <button class="lost-btn" style="background:var(--lost); color:white;" onclick="returnToStart()">🔄 العودة للمنطلق</button>
             </div>
-            <div class="input-group">
-                <label>تحديد مكان البدء يدوياً (اختياري - خط عرض, خط طول):</label>
-                <input type="text" id="manualStartInput" placeholder="مثال: 30.0444, 31.2357">
-                <button class="save-btn" style="margin-top: 5px; padding: 8px; width: 100%;" onclick="saveManualLocation()">تثبيت الموقع اليدوي</button>
-            </div>
-            <div class="input-group">
-                <label>نطاق الأمان والتنبيه عند الابتعاد:</label>
-                <select id="fenceDistance">
-                    <option value="0">إيقاف التنبيه</option>
-                    <option value="50">الابتعاد أكثر من 50 متر</option>
-                    <option value="100">الابتعاد أكثر من 100 متر</option>
-                    <option value="500">الابتعاد أكثر من 500 متر</option>
-                    <option value="1000">الابتعاد أكثر من 1 كيلومتر</option>
-                </select>
-            </div>
+            <select id="fenceDistance">
+                <option value="0">إيقاف تنبيه الابتعاد</option>
+                <option value="50">تنبيه عند ابتعاد 50م</option>
+                <option value="100">تنبيه عند ابتعاد 100م</option>
+            </select>
         </div>
-        <div class="input-group">
-            <label>الوجهة المستهدفة:</label>
-            <input type="text" id="targetInput" placeholder="مثال: لندن، مصر، اليابان...">
-        </div>
-        <button class="search-btn" onclick="searchDestination()">🚀 تحليل المسار وحساب المسافات</button>
+
+        <input type="text" id="targetInput" placeholder="أدخل الوجهة (مثال: القاهرة، لندن...)">
+        <button class="search-btn" onclick="searchDest()">🚀 تحليل وتحديد المسار</button>
+
         <div id="map"></div>
-        <button class="share-btn" onclick="shareMyLocation()">🔗 مشاركة موقعي الحالي مع الأسرة</button>
-        <div class="card">
-            <h3>📌 نقطة الانطلاق / البدء المعتمدة</h3>
-            <p id="startText">لم يتم تحديد الموقع بعد</p>
-        </div>
-        <div class="card">
-            <h3>🎯 الوجهة الجغرافية المعتمدة</h3>
-            <p id="targetText">لا توجد وجهة محددة حالياً</p>
-        </div>
+        <button class="share-btn" onclick="shareLoc()">🔗 مشاركة موقعي الحالي</button>
+        
         <div class="distance-container">
-            <h3 style="color: #94a3b8;">المسافة الفعلية الدقيقة</h3>
-            <div class="distance" id="distanceBox">--</div>
-            <div id="routeTypeBox" class="route-type" style="display:none;"></div>
-            <div class="small" id="accuracyText">تطابق الحسابات الجيوديسية العالمية.</div>
+            <div>المسافة الحالية:</div>
+            <div class="distance" id="distBox">--</div>
         </div>
-        <button class="maps-btn" onclick="openGoogleMaps()">🗺️ فتح مسار المطابقة في Google Maps</button>
+        <button class="maps-btn" onclick="openGMap()">🗺️ فتح المسار في Google Maps</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let map, userMarker, targetMarker, startMarker, currentPolyline = null, watchId = null, isUserInteracting = false;
-        let currentLat = null, currentLng = null, targetLat = null, targetLng = null, savedStartLat = null, savedStartLng = null, lastAlertTime = 0;
+        let map = L.map('map').setView([30.0444, 31.2357], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        let userMarker, targetMarker, startCoords, watchId;
 
-        function initMap(){
-            map = L.map('map').setView([20.0, 0.0], 2);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        function startTracking(){
+            watchId = navigator.geolocation.watchPosition(pos => {
+                let lat = pos.coords.latitude;
+                let lng = pos.coords.longitude;
+                if(!userMarker) userMarker = L.marker([lat, lng]).addTo(map).bindPopup("أنت هنا").openPopup();
+                else userMarker.setLatLng([lat, lng]);
+                map.setView([lat, lng], 14);
+            });
         }
 
-        function startLiveTracking(){
-            if(!navigator.geolocation) return alert("جهازك لا يدعم تحديد الموقع.");
-            document.getElementById("statusDot").className = "dot blink";
-            watchId = navigator.geolocation.watchPosition((pos) => {
-                currentLat = pos.coords.latitude; currentLng = pos.coords.longitude;
-                updateUserMarker(); checkGeofenceFence();
-            }, console.error, { enableHighAccuracy: true });
+        function stopTracking(){ if(watchId) navigator.geolocation.clearWatch(watchId); }
+
+        function saveLocation(){
+            navigator.geolocation.getCurrentPosition(pos => {
+                startCoords = [pos.coords.latitude, pos.coords.longitude];
+                alert("تم حفظ موقع البدء: " + startCoords);
+            });
         }
 
-        function updateUserMarker(){
-            if(userMarker) userMarker.setLatLng([currentLat, currentLng]);
-            else userMarker = L.marker([currentLat, currentLng]).addTo(map);
-            if(document.getElementById("autoCenterCheck").checked && targetLat === null) map.setView([currentLat, currentLng], 15);
+        function returnToStart(){
+            if(!startCoords) return alert("لا يوجد موقع محفوظ!");
+            [document.getElementById('targetInput').value] = [startCoords.join(',')];
+            searchDest();
         }
 
-        function saveCurrentLocation() {
-            if(!currentLat) return alert("شغل الـ GPS أولاً.");
-            savedStartLat = currentLat; savedStartLng = currentLng;
-            updateStartMarkerAndText();
-        }
-
-        function saveManualLocation() {
-            let val = document.getElementById("manualStartInput").value.split(",");
-            if(val.length === 2) { savedStartLat = parseFloat(val[0]); savedStartLng = parseFloat(val[1]); updateStartMarkerAndText(); }
-        }
-
-        function updateStartMarkerAndText() {
-            document.getElementById("startText").innerText = `موقع البدء: ${savedStartLat.toFixed(4)}, ${savedStartLng.toFixed(4)}`;
-            if(startMarker) startMarker.setLatLng([savedStartLat, savedStartLng]);
-            else startMarker = L.marker([savedStartLat, savedStartLng], {icon: new L.Icon.Default({iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png'})}).addTo(map);
-        }
-
-        function returnToStartLocation() {
-            if(!savedStartLat) return alert("لا يوجد موقع محفوظ.");
-            targetLat = savedStartLat; targetLng = savedStartLng;
-            updateTargetMarker(); calculateGlobalDistance();
-            speakNotification("تم تحديد طريق العودة.");
-        }
-
-        function updateTargetMarker(){
-            if(targetMarker) targetMarker.setLatLng([targetLat, targetLng]);
-            else targetMarker = L.marker([targetLat, targetLng]).addTo(map);
-        }
-
-        function checkGeofenceFence() {
-            let fenceVal = parseInt(document.getElementById("fenceDistance").value);
-            if(fenceVal > 0 && savedStartLat && currentLat) {
-                let d = haversineDistance(currentLat, currentLng, savedStartLat, savedStartLng);
-                if(d > fenceVal && (Date.now() - lastAlertTime > 20000)) {
-                    lastAlertTime = Date.now();
-                    speakNotification("تحذير: لقد ابتعدت عن المنطقة الآمنة.");
-                }
-            }
-        }
-
-        function speakNotification(text) {
-            if ('speechSynthesis' in window) {
-                let u = new SpeechSynthesisUtterance(text); u.lang = 'ar-SA';
-                window.speechSynthesis.speak(u);
-            }
-        }
-
-        function shareMyLocation() {
-            let url = `https://www.google.com/maps?q=${currentLat},${currentLng}`;
-            if(navigator.share) navigator.share({title: 'موقعي', url: url});
-            else { navigator.clipboard.writeText(url); alert("تم نسخ الرابط."); }
-        }
-
-        async function searchDestination(){
-            let query = document.getElementById("targetInput").value;
-            let res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
+        async function searchDest(){
+            let query = document.getElementById('targetInput').value;
+            let res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json`);
             let data = await res.json();
-            if(data.length > 0) {
-                targetLat = parseFloat(data[0].lat); targetLng = parseFloat(data[0].lon);
-                updateTargetMarker(); calculateGlobalDistance();
+            if(data.length > 0){
+                let lat = data[0].lat;
+                let lon = data[0].lon;
+                if(targetMarker) targetMarker.setLatLng([lat, lon]);
+                else targetMarker = L.marker([lat, lon], {icon: new L.Icon.Default({iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png'})}).addTo(map);
+                map.setView([lat, lon], 12);
+                document.getElementById('distBox').innerText = "تم التحديد";
             }
         }
 
-        async function calculateGlobalDistance(){
-            if(!currentLat || !targetLat) return;
-            if(currentPolyline) map.removeLayer(currentPolyline);
-            let res = await fetch(`https://router.project-osrm.org/route/v1/driving/${currentLng},${currentLat};${targetLng},${targetLat}?geometries=geojson`);
-            let data = await res.json();
-            if(data.routes) {
-                let coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-                currentPolyline = L.polyline(coords, {color: '#0d9488'}).addTo(map);
-                document.getElementById("distanceBox").innerText = (data.routes[0].distance/1000).toFixed(2) + " كم";
-            }
+        function openGMap(){
+            let target = document.getElementById('targetInput').value;
+            window.open(`https://www.google.com/maps/search/?api=1&query=${target}`, '_blank');
         }
 
-        function haversineDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371000;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        function shareLoc(){
+            navigator.geolocation.getCurrentPosition(pos => {
+                let url = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                if(navigator.share) navigator.share({url: url});
+                else prompt("انسخ الرابط:", url);
+            });
         }
-
-        function stopTracking(){ if(watchId){ navigator.geolocation.clearWatch(watchId); watchId = null; } }
-        function openGoogleMaps(){ if(currentLat && targetLat) window.open(`https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${targetLat},${targetLng}`); }
-        window.onload = initMap;
     </script>
 </body>
 </html>
