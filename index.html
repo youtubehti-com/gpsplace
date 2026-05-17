@@ -3,7 +3,7 @@
 <head>  
     <meta charset="UTF-8">  
     <meta name="viewport" content="width=device-width, initial-scale=1.0">  
-    <title>نظام التتبع والملاحة العالمي الاحترافي</title>  
+    <title>نظام التتبع والملاحة العالمي الاحترافي - المساعد الذكي</title>  
     <!-- Leaflet CSS -->  
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>  
     <style>  
@@ -16,6 +16,7 @@
             --text:#ffffff;  
             --danger:#ef4444;  
             --success:#10b981;  
+            --lost:#7c3aed;
         }  
           
         *{  
@@ -93,7 +94,7 @@
             font-weight:bold;  
         }  
           
-        input{  
+        input, select {  
             width:100%;  
             padding:12px;  
             border:none;  
@@ -104,7 +105,7 @@
             border: 1px solid rgba(255,255,255,0.1);  
         }  
           
-        input:focus{  
+        input:focus, select:focus{  
             outline:none;  
             border:2px solid var(--primary);  
         }  
@@ -136,7 +137,29 @@
         .search-btn{ background:var(--accent); color:#111827; grid-column: span 2; font-size: 1.1rem;}  
         .maps-btn{ background:var(--primary); color:white; margin-top: 15px;}  
         .stop-btn{ background:var(--danger); color:white; }  
-          
+        .share-btn{ background:var(--success); color:white; grid-column: span 2; margin-bottom: 10px; font-size: 1rem;}
+        
+        /* تصميم مخصص لقسم أنا تائه */
+        .lost-section {
+            background: rgba(124, 58, 237, 0.15);
+            border: 2px dashed var(--lost);
+            padding: 15px;
+            border-radius: 20px;
+            margin-bottom: 15px;
+        }
+        .lost-title {
+            color: #c084fc;
+            text-align: center;
+            margin-bottom: 12px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .lost-btn { background: var(--lost); color: white; }
+        .save-btn { background: #4b5563; color: white; }
+        
         #map{  
             width:100%;  
             height:380px;  
@@ -227,7 +250,34 @@
         <div class="toggle-container">  
             <span>🔒 تثبيت الشاشة والمتابعة التلقائية</span>  
             <input type="checkbox" id="autoCenterCheck" checked style="width: auto; cursor: pointer;">  
-        </div>  
+        </div>
+
+        <!-- أداة مساعدة كبار السن: أنا تائه -->
+        <div class="lost-section">
+            <div class="lost-title">🛑 نظام الطوارئ والمساعدة (أنا تائه)</div>
+            
+            <div class="btn-grid">
+                <button class="save-btn" onclick="saveCurrentLocation()">💾 حفظ موقعي الحالي كبداية</button>
+                <button class="lost-btn" onclick="returnToStartLocation()">🔄 العودة لموقع البدء</button>
+            </div>
+
+            <div class="input-group">
+                <label>تحديد مكان البدء يدوياً (اختياري - خط عرض, خط طول):</label>
+                <input type="text" id="manualStartInput" placeholder="مثال: 30.0444, 31.2357">
+                <button class="save-btn" style="margin-top: 5px; padding: 8px;" onclick="saveManualLocation()">تثبيت الموقع اليدوي</button>
+            </div>
+
+            <div class="input-group">
+                <label>نطاق الأمان والتنبيه عند الابتعاد:</label>
+                <select id="fenceDistance">
+                    <option value="0">إيقاف التنبيه</option>
+                    <option value="50">الابتعاد أكثر من 50 متر</option>
+                    <option value="100">الابتعاد أكثر من 100 متر</option>
+                    <option value="500">الابتعاد أكثر من 500 متر</option>
+                    <option value="1000">الابتعاد أكثر من 1 كيلومتر</option>
+                </select>
+            </div>
+        </div>
           
         <div class="input-group">  
             <label>الوجهة المستهدفة (دولية / قارية):</label>  
@@ -237,10 +287,12 @@
         <button class="search-btn" onclick="searchDestination()">🚀 تحليل المسار وحساب المسافات</button>  
           
         <div id="map"></div>  
+
+        <button class="share-btn" onclick="shareMyLocation()">🔗 مشاركة موقعي الحالي مع الأسرة</button>
           
         <div class="card">  
-            <h3>📌 نقطة الانطلاق الحالية</h3>  
-            <p id="startText">لم يتم تحديد الموقع بعد (قم بتفعيل GPS أو البحث)</p>  
+            <h3>📌 نقطة الانطلاق / البدء المعتمدة</h3>  
+            <p id="startText">لم يتم تحديد الموقع بعد (قم بتفعيل GPS أو الحفظ)</p>  
         </div>  
           
         <div class="card">  
@@ -264,7 +316,8 @@
         let map;  
         let userMarker;  
         let targetMarker;  
-        let currentPolyline = null; // رسم المسار برياً أو جوياً يدوياً للتحكم المطلق  
+        let startMarker; // ماركر لتحديد موقع البدء المحفوظ
+        let currentPolyline = null;  
         let watchId = null;  
         let isUserInteracting = false;  
           
@@ -273,7 +326,11 @@
         let targetLat = null;  
         let targetLng = null;  
 
-        // قاموس العواصم الذكي لحل مشكلة إحداثيات الدول العشوائية بالـ API
+        // إحداثيات موقع البدء المحفوظ (آلياً أو يدوياً)
+        let savedStartLat = null;
+        let savedStartLng = null;
+        let lastAlertTime = 0; // لمنع تكرار التنبيه الصوتي بشكل مزعج في نفس اللحظة
+
         const countryCapitalsFallback = {
             "الولايات المتحدة الأمريكية": { name: "واشنطن العاصمة (توجيه تلقائي لحماية المسافة)", lat: 38.8951, lng: -77.0364 },
             "الولايات المتحدة": { name: "واشنطن العاصمة (توجيه تلقائي لحماية المسافة)", lat: 38.8951, lng: -77.0364 },
@@ -297,7 +354,6 @@
             "ألمانيا": { name: "برلين", lat: 52.5200, lng: 13.4050 }
         };
           
-        // تهيئة الخريطة  
         function initMap(){  
             map = L.map('map').setView([20.0, 0.0], 2);  
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {  
@@ -308,7 +364,6 @@
             map.on('movestart', () => { isUserInteracting = true; });  
         }  
           
-        // نظام الـ GPS النشط  
         function startLiveTracking(){  
             if(!navigator.geolocation){  
                 alert("جهازك لا يدعم مستشعرات تحديد الموقع الحية.");  
@@ -332,6 +387,7 @@
                       
                     updateUserMarker();  
                     calculateGlobalDistance();  
+                    checkGeofenceFence(); // فحص نظام حماية الابتعاد تلقائياً
                 },  
                 (error) => {  
                     console.error(error);  
@@ -352,11 +408,10 @@
         }  
           
         function updateUserMarker(){  
-            document.getElementById("startText").innerText = `الموقع الحالي الفعلي: ${currentLat.toFixed(6)}, ${currentLng.toFixed(6)}`;  
             if(userMarker){  
                 userMarker.setLatLng([currentLat, currentLng]);  
             }else{  
-                userMarker = L.marker([currentLat, currentLng]).addTo(map).bindPopup("📍 نقطة انطلاقك الحالية").openPopup();  
+                userMarker = L.marker([currentLat, currentLng]).addTo(map).bindPopup("📍 موقعك الحالي الفعلي").openPopup();  
             }  
               
             const isAutoCenter = document.getElementById("autoCenterCheck").checked;  
@@ -364,8 +419,154 @@
                 map.setView([currentLat, currentLng], 15);  
             }  
         }  
+
+        // [ميزة جديدة] حفظ الموقع الحالي كبداية
+        function saveCurrentLocation() {
+            if(currentLat === null) {
+                alert("يرجى تشغيل الـ GPS أولاً للتعرف على موقعك وحفظه.");
+                return;
+            }
+            savedStartLat = currentLat;
+            savedStartLng = currentLng;
+            updateStartMarkerAndText("تم حفظ موقعك الحالي آلياً بنجاح.");
+        }
+
+        // [ميزة جديدة] إدخال وتثبيت موقع يدوي كبداية
+        function saveManualLocation() {
+            let val = document.getElementById("manualStartInput").value.trim();
+            if(!val) {
+                alert("الرجاء إدخال الإحداثيات أولاً.");
+                return;
+            }
+            let coords = val.split(",");
+            if(coords.length !== 2 || isNaN(parseFloat(coords[0])) || isNaN(parseFloat(coords[1]))) {
+                alert("صيغة الإحداثيات خاطئة. تأكد أنها خط عرض ثم فاصلة ثم خط طول.");
+                return;
+            }
+            savedStartLat = parseFloat(coords[0]);
+            savedStartLng = parseFloat(coords[1]);
+            updateStartMarkerAndText("تم اعتماد وتثبيت الموقع اليدوي بنجاح.");
+        }
+
+        function updateStartMarkerAndText(msg) {
+            document.getElementById("startText").innerText = `موقع البدء المعتمد: ${savedStartLat.toFixed(6)}, ${savedStartLng.toFixed(6)}`;
+            if(startMarker) {
+                startMarker.setLatLng([savedStartLat, savedStartLng]);
+            } else {
+                // أيقونة خضراء مميزة لنقطة البدء لسهولة التعرف عليها
+                let greenIcon = new L.Icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+                startMarker = L.marker([savedStartLat, savedStartLng], {icon: greenIcon}).addTo(map).bindPopup("💾 موقع البدء المحفوظ المحمي").openPopup();
+            }
+            alert(msg);
+        }
+
+        // [ميزة جديدة] العودة لموقع البدء المحفوظ ورسم المسار فوراً
+        function returnToStartLocation() {
+            if(savedStartLat === null) {
+                alert("لا يوجد موقع بدء محفوظ حالياً للعودة إليه. قم بالضغط على 'حفظ موقعي الحالي' أولاً أو أدخله يدوياً.");
+                return;
+            }
+            targetLat = savedStartLat;
+            targetLng = savedStartLng;
+            document.getElementById("targetText").innerText = `موقع البدء المحفوظ للعودة (${targetLat.toFixed(4)}, ${targetLng.toFixed(4)})`;
+            
+            if(targetMarker) {
+                targetMarker.setLatLng([targetLat, targetLng]);
+            } else {
+                targetMarker = L.marker([targetLat, targetLng]).addTo(map).bindPopup("🎯 العودة لموقع البدء");
+            }
+            
+            isUserInteracting = false;
+            calculateGlobalDistance();
+            speakNotification("تم تحديد طريق العودة إلى موقع البدء الخاص بك. اتبع المسار الموضح.");
+        }
+
+        // [ميزة جديدة] التنبيه الذكي عند الابتعاد وتوجيه كبار السن صوتياً
+        function checkGeofenceFence() {
+            let fenceVal = parseInt(document.getElementById("fenceDistance").value);
+            if(fenceVal === 0 || savedStartLat === null || currentLat === null) return;
+
+            let distance = haversineDistance(currentLat, currentLng, savedStartLat, savedStartLng);
+            
+            if(distance > fenceVal) {
+                let now = Date.now();
+                // يطلق التنبيه الصوتي كل 20 ثانية كحد أقصى لمنع تكرار الصوت بصورة مزعجة
+                if(now - lastAlertTime > 20000) {
+                    lastAlertTime = now;
+                    
+                    // تفعيل اهتزاز الهاتف إن أمكن
+                    if(navigator.vibrate) navigator.vibrate([500, 200, 500]);
+
+                    // حساب الاتجاه الجغرافي اللفظي للعودة
+                    let directionText = calculateDirection(currentLat, currentLng, savedStartLat, savedStartLng);
+                    let alertMsg = `انتبه، لقد ابتعدت عن الموقع المستهدف بمقدار ${Math.round(distance)} أمتار. للعودة، يجب عليك التحرك باتجاه ${directionText}.`;
+                    
+                    speakNotification(alertMsg);
+                    document.getElementById("gpsStatus").innerText = `⚠️ تنبيه: خارج النطاق الآمن بـ ${Math.round(distance)}م!`;
+                    document.getElementById("statusDot").style.background = "#ef4444";
+                }
+            }
+        }
+
+        // دالة تحويل النص إلى صوت (TTS) داعمة للغة العربية بالكامل
+        function speakNotification(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // إيقاف أي صوت سابق فوراً
+                let utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ar-SA';
+                utterance.rate = 0.9; // سرعة هادئة ومناسبة لكبار السن
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // حساب الاتجاه اللفظي التقريبي بين نقطتين لتسهيل العودة لكبار السن
+        function calculateDirection(lat1, lng1, lat2, lng2) {
+            let dLng = lng2 - lng1;
+            let dLat = lat2 - lat1;
+            let angle = Math.atan2(dLng, dLat) * 180 / Math.PI;
+            if (angle < 0) angle += 360;
+
+            if (angle >= 337.5 || angle < 22.5) return "الشمال";
+            if (angle >= 22.5 && angle < 67.5) return "الشمال الشرقي";
+            if (angle >= 67.5 && angle < 112.5) return "الشرق";
+            if (angle >= 112.5 && angle < 157.5) return "الجنوب الشرقي";
+            if (angle >= 157.5 && angle < 202.5) return "الجنوب";
+            if (angle >= 202.5 && angle < 247.5) return "الجنوب الغربي";
+            if (angle >= 247.5 && angle < 292.5) return "الغرب";
+            if (angle >= 292.5 && angle < 337.5) return "الشمال الغربي";
+            return "موقع البدء";
+        }
+
+        // [ميزة جديدة] مشاركة الموقع الحالي مع العائلة عبر الـ Web Share API أو نسخ الرابط
+        function shareMyLocation() {
+            if(currentLat === null) {
+                alert("لم يتم تحديد موقعك الحالي بعد للمشاركة.");
+                return;
+            }
+            let mapLink = `https://www.google.com/maps?q=${currentLat},${currentLng}`;
+            let shareText = `مرحباً، هذا هو موقعي الحالي الفعلي على الخريطة للاطمئنان: \n${mapLink}`;
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'موقعي الحالي للطوارئ',
+                    text: shareText,
+                    url: mapLink
+                }).catch(console.error);
+            } else {
+                // حل بديل في حال كان المتصفح لا يدعم زر الشير المباشر لبعض الأنظمة
+                navigator.clipboard.writeText(shareText);
+                alert("تم نسخ نص ورابط موقعك الحالي بنجاح! يمكنك الآن لصقه وإرساله في واتساب أو أي تطبيق آخر لعائلتك.");
+            }
+        }
           
-        // محرك البحث الجغرافي الذكي والمقيد (لحماية أسماء الدول الكبرى)  
+        // محرك البحث الجغرافي الذكي والمقيد
         async function searchDestination(){  
             let query = document.getElementById("targetInput").value.trim();  
             if(!query){  
@@ -375,7 +576,6 @@
               
             document.getElementById("targetText").innerText = "جاري الفرز والتحليل الجغرافي المعقد... 🌍";  
               
-            // فحص فوري: لو المدخل دولة مسجلة بالقاموس لحمايتها من العشوائية الإدارية لـ Nominatim
             let cleanQuery = query.toLowerCase().replace(/أ/g, "ا").replace(/إ/g, "ا").replace(/آ/g, "ا");
             let fallbackKey = Object.keys(countryCapitalsFallback).find(key => {
                 let cleanKey = key.toLowerCase().replace(/أ/g, "ا").replace(/إ/g, "ا").replace(/آ/g, "ا");
@@ -392,7 +592,6 @@
             }
 
             try{  
-                // إضافة فلاتر تحسين جودة البحث وضمان جلب المركز الحقيقي للدولة بدلاً من أطرافها  
                 let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&polygon_threshold=0.5`;  
                 let response = await fetch(url, { headers: { 'Accept-Language': 'ar,en' } });  
                 let data = await response.json();  
@@ -403,7 +602,6 @@
                     return;  
                 }  
                   
-                // إحداثيات مركز الهدف المعترف به دولياً  
                 targetLat = parseFloat(data[0].lat);  
                 targetLng = parseFloat(data[0].lon);  
                 document.getElementById("targetText").innerText = data[0].display_name;  
@@ -419,7 +617,6 @@
             isUserInteracting = false;  
             updateTargetMarker();  
               
-            // إذا لم يكن الـ GPS يعمل، نضع نقطة انطلاق افتراضية (مثال: القاهرة) للتجربة والمحاكاة الفورية  
             if(currentLat === null){  
                 currentLat = 30.0444;  
                 currentLng = 31.2357;  
@@ -443,40 +640,32 @@
               
             if(currentPolyline) { map.removeLayer(currentPolyline); }  
               
-            // محاولة الاتصال بـ Routing API احترافي لحساب المسار البري الحقيقي بالشوارع  
             let osrmUrl = `https://router.project-osrm.org/route/v1/driving/${currentLng},${currentLat};${targetLng},${targetLat}?overview=full&geometries=geojson`;  
               
             try {  
                 let response = await fetch(osrmUrl);  
                 let result = await response.json();  
                   
-                // شرط الأمان الصارم والجديد: التحقق من وجود مسار ومنطقية المدة الزمنية (route.duration) لمنع أخطاء الـ OSRM عابر القارات  
                 if(result.code === 'Ok' && result.routes && result.routes.length > 0) {  
                     let route = result.routes[0];  
                     
-                    // إذا كان الوقت المستغرق صفر أو ضخم جداً بصورة مريبة أو المسافة مقطوعة بالبحر بشكل خاطئ  
                     if(route.duration === 0 || route.duration > 3500000 || (Math.abs(currentLng - targetLng) > 30 && route.duration < 10000)) {
                         triggerAirDistanceFallback();
                         return;
                     }
 
                     let distanceInMeters = route.distance;  
-                      
-                    // رسم مسار القيادة الفعلي بالشوارع على الخريطة  
                     let coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);  
                     currentPolyline = L.polyline(coordinates, { color: '#0d9488', weight: 5, opacity: 0.9 }).addTo(map);  
                       
                     displayDistance(distanceInMeters, "land");  
                 } else {  
-                    // إذا كان الرد ناجحاً ولكن لا توجد شوارع متصلة فعلياً  
                     triggerAirDistanceFallback();  
                 }  
             } catch (error) {  
-                // عند حدوث خطأ في الشبكة أو فشل إيجاد طريق بري (بسبب البحار أو انقطاع الحدود)  
                 triggerAirDistanceFallback();  
             }  
               
-            // احتواء حركة الخريطة لتشمل النقطتين معاً  
             const isAutoCenter = document.getElementById("autoCenterCheck").checked;  
             if(isAutoCenter && !isUserInteracting) {  
                 let bounds = L.latLngBounds([[currentLat, currentLng], [targetLat, targetLng]]);  
@@ -484,11 +673,9 @@
             }  
         }  
           
-        // نظام التحويل التلقائي الذكي للمسافات الجوية وعابرات القارات (Great Circle Algorithm الملاحي الحقيقي)
         function triggerAirDistanceFallback(){  
             let airDistanceMeters = haversineDistance(currentLat, currentLng, targetLat, targetLng);  
               
-            // حساب المسار الدائري العظيم (Great Circle Geodesic Path) لمحاكاة خطوط الملاحة الجوية المنحنية حقيقةً
             let points = [];  
             let steps = 60;  
             
@@ -500,13 +687,11 @@
             let lat2 = targetLat * d2r;
             let lon2 = targetLng * d2r;
             
-            // حساب المسافة بالزاوية الكروية
             let d = 2 * Math.asin(Math.sqrt(Math.pow(Math.sin((lat1 - lat2) / 2), 2) + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin((lon1 - lon2) / 2), 2)));
             
             for (let i = 0; i <= steps; i++) {  
                 let f = i / steps;  
                 
-                // معادلة الاستيفاء الجيوديسي الملاحي الحقيقي الكروي (Great Circle Interpolation)
                 let A = Math.sin((1 - f) * d) / Math.sin(d);
                 let B = Math.sin(f * d) / Math.sin(d);
                 
@@ -517,7 +702,6 @@
                 let lat = Math.atan2(z, Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2))) * r2d;
                 let lon = Math.atan2(y, x) * r2d;
                 
-                // التعامل الذكي مع الالتفاف عبر خط التاريخ الدولي لمنع انقطاع الرسم البصري للخريطة
                 if (points.length > 0) {
                     let prevLon = points[points.length - 1][1];
                     if (Math.abs(lon - prevLon) > 180) {
@@ -539,9 +723,8 @@
             displayDistance(airDistanceMeters, "air");  
         }  
           
-        // معادلة هافرسين الرياضية المتقدمة لقياس أقصر مسافة على سطح كروي  
         function haversineDistance(lat1, lon1, lat2, lon2) {  
-            const R = 6371000; // نصف قطر كوكب الأرض الفعلي بالمتر المعتمد عالمياً  
+            const R = 6371000; 
             const dLat = (lat2 - lat1) * Math.PI / 180;  
             const dLon = (lon2 - lon1) * Math.PI / 180;  
             const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +  
@@ -551,7 +734,6 @@
             return R * c;  
         }  
           
-        // عرض النتائج بدقة وتحديث لوحة البيانات  
         function displayDistance(distanceInMeters, type){  
             let box = document.getElementById("distanceBox");  
             let typeBox = document.getElementById("routeTypeBox");  
@@ -572,7 +754,6 @@
             }  
         }  
           
-        // التحويل المباشر لخرائط جوجل ومطابقة البيانات الحية 100%  
         function openGoogleMaps(){  
             if(currentLat === null || targetLat === null){  
                 alert("يجب تحديد موقعك الحالي واختيار الوجهة أولاً لتفعيل المطابقة.");  
